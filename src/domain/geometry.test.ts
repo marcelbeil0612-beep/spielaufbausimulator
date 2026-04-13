@@ -1,9 +1,35 @@
 import { describe, it, expect } from 'vitest';
-import { distance, pressPosition } from './geometry';
+import { distance, distanceToLineSegment, pressPosition } from './geometry';
 
 describe('distance', () => {
   it('misst euklidisch', () => {
     expect(distance({ x: 0, y: 0 }, { x: 3, y: 4 })).toBe(5);
+  });
+});
+
+describe('distanceToLineSegment', () => {
+  it('misst senkrecht aufs Segment, wenn der Lotpunkt dazwischen liegt', () => {
+    const a = { x: 0, y: 0 };
+    const b = { x: 10, y: 0 };
+    expect(distanceToLineSegment({ x: 5, y: 3 }, a, b)).toBeCloseTo(3, 5);
+  });
+
+  it('misst zum näheren Endpunkt, wenn der Lotpunkt außerhalb liegt', () => {
+    const a = { x: 0, y: 0 };
+    const b = { x: 10, y: 0 };
+    expect(distanceToLineSegment({ x: 13, y: 4 }, a, b)).toBeCloseTo(5, 5);
+    expect(distanceToLineSegment({ x: -3, y: 4 }, a, b)).toBeCloseTo(5, 5);
+  });
+
+  it('fällt auf euklidische Distanz zurück, wenn a===b', () => {
+    const a = { x: 5, y: 5 };
+    expect(distanceToLineSegment({ x: 2, y: 1 }, a, a)).toBeCloseTo(5, 5);
+  });
+
+  it('Punkt auf dem Segment hat Distanz 0', () => {
+    expect(
+      distanceToLineSegment({ x: 3, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 }),
+    ).toBeCloseTo(0, 5);
   });
 });
 
