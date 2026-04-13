@@ -32,4 +32,29 @@ describe('applyStartVariant', () => {
     )!;
     expect(wide.position.y).toBe(liv.position.y);
   });
+
+  it('high: LIV und RIV rücken auf y=30', () => {
+    const adjusted = applyStartVariant(home, 'high');
+    const liv = adjusted.players.find((p) => p.role === 'LCB')!;
+    const riv = adjusted.players.find((p) => p.role === 'RCB')!;
+    expect(liv.position.y).toBe(30);
+    expect(riv.position.y).toBe(30);
+  });
+
+  it('high: X-Koordinaten der IVs bleiben wie im Default', () => {
+    const defaultLiv = home.players.find((p) => p.role === 'LCB')!;
+    const defaultRiv = home.players.find((p) => p.role === 'RCB')!;
+    const adjusted = applyStartVariant(home, 'high');
+    const liv = adjusted.players.find((p) => p.role === 'LCB')!;
+    const riv = adjusted.players.find((p) => p.role === 'RCB')!;
+    expect(liv.position.x).toBe(defaultLiv.position.x);
+    expect(riv.position.x).toBe(defaultRiv.position.x);
+  });
+
+  it('high: Nicht-IV-Spieler bleiben unverändert', () => {
+    const adjusted = applyStartVariant(home, 'high');
+    const nonIV = (team: Team) =>
+      team.players.filter((p) => p.role !== 'LCB' && p.role !== 'RCB');
+    expect(nonIV(adjusted)).toEqual(nonIV(home));
+  });
 });

@@ -47,7 +47,9 @@ function isScene(value: unknown): value is Scene {
     typeof v['ballHolderId'] === 'string' &&
     typeof v['phase'] === 'string' &&
     typeof v['variant'] === 'string' &&
-    (v['variant'] === 'narrow' || v['variant'] === 'wide') &&
+    (v['variant'] === 'narrow' ||
+      v['variant'] === 'wide' ||
+      v['variant'] === 'high') &&
     typeof v['firstTouchPlan'] === 'string' &&
     (v['firstTouchPlan'] === 'clean' ||
       v['firstTouchPlan'] === 'neutral' ||

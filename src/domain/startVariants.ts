@@ -4,41 +4,62 @@ import type { Team } from './types';
  * Startvariante des Lehrfalls "Pass TW → linker Innenverteidiger".
  *  - `narrow`: LIV steht enger zur Mitte (aktuelle Default-Formation)
  *  - `wide`:   LIV steht breit, näher zur Außenlinie
+ *  - `high`:   beide IVs (LIV + RIV) rücken vor – aggressive, hohe
+ *              Abwehrlinie mit größerem Abstand zum TW
  */
-export type StartVariant = 'narrow' | 'wide';
+export type StartVariant = 'narrow' | 'wide' | 'high';
 
 export const START_VARIANTS: readonly StartVariant[] = [
   'narrow',
   'wide',
+  'high',
 ] as const;
 
 export const START_VARIANT_LABELS: Record<StartVariant, string> = {
   narrow: 'LIV eng',
   wide: 'LIV breit',
+  high: 'IV-Linie hoch',
 };
 
+type IVOverride = Readonly<Partial<{ x: number; y: number }>>;
+
 /**
- * X-Koordinate des LIV pro Variante. Y bleibt unverändert, damit die
- * Abwehrlinie auf gleicher Höhe bleibt und nur die Breitenstellung variiert.
+ * Pro Variante eine Tabelle mit Positions-Overrides für LCB/RCB.
+ * Fehlt ein Feld (x oder y), bleibt der Wert aus der Default-Formation.
  */
-const LCB_X_BY_VARIANT: Record<StartVariant, number> = {
-  narrow: 36,
-  wide: 22,
+const IV_OVERRIDES: Record<
+  StartVariant,
+  Readonly<{ LCB?: IVOverride; RCB?: IVOverride }>
+> = {
+  narrow: { LCB: { x: 36 } },
+  wide: { LCB: { x: 22 } },
+  high: { LCB: { y: 30 }, RCB: { y: 30 } },
 };
 
 /**
- * Wendet die Variante auf ein Heimteam an. Nur die Position des LIV (`LCB`)
- * wird angepasst; alle anderen Spieler bleiben unverändert.
+ * Wendet die Variante auf ein Heimteam an. Nur die IV-Positionen (LCB/RCB)
+ * werden angepasst; alle anderen Spieler bleiben unverändert.
  */
 export function applyStartVariant(home: Team, variant: StartVariant): Team {
-  const targetX = LCB_X_BY_VARIANT[variant];
+  const overrides = IV_OVERRIDES[variant];
   return {
     ...home,
-    players: home.players.map((p) =>
-      p.role === 'LCB'
-        ? { ...p, position: { x: targetX, y: p.position.y } }
-        : p,
-    ),
+    players: home.players.map((p) => {
+      const o =
+        p.role === 'LCB'
+          ? overrides.LCB
+          : p.role === 'RCB'
+            ? overrides.RCB
+            : undefined;
+      if (!o) return p;
+      return {
+        ...p,
+        position: {
+          x: o.x ?? p.position.x,
+          y: o.y ?? p.position.y,
+        },
+      };
+    }),
   };
 }
 
