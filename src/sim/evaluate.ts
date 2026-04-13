@@ -1,6 +1,7 @@
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { distance } from '@/domain/geometry';
+import type { PassLaneAssessment } from './passLane';
 
 export type Rating = 'open' | 'pressure' | 'risky' | 'loss-danger';
 
@@ -45,6 +46,12 @@ export const CLOSE_CONTACT_RADIUS = 5;
  *    unter geringem Druck (≤ 1 Presser, nicht dirty): offene Stellung gibt
  *    dem Empfänger Übersicht, das Rating bleibt auf dem Pressing-Niveau.
  *
+ * Passlinie (nur in der Vorschau sinnvoll, daher optional):
+ *  - `blockers ≥ 1` ⇒ `loss-danger`: ein Gegner steht im Abfangradius der
+ *    Passlinie – der Pass kommt gar nicht erst an.
+ *  - `threats ≥ 1` eskaliert mindestens auf `risky`: die Passlinie ist
+ *    eingeengt, der Empfänger bekommt den Ball unter Druck.
+ *
  * Priorität: loss-danger > risky > pressure > open.
  */
 type Signals = {
@@ -56,17 +63,21 @@ type Signals = {
   readonly soft: boolean;
   readonly openStance: boolean;
   readonly closedStance: boolean;
+  readonly laneBlocked: boolean;
+  readonly laneThreatened: boolean;
 };
 
 /**
- * Prüft die fünf Ballverlust-Pfade in fester Priorität:
- *  1. Überzahl-Pressing (≥ 3 Presser)
- *  2. Naher Körperkontakt + unsaubere Annahme
- *  3. Scharfer Pass + unsaubere Annahme
- *  4. Scharfer + ungenauer Pass unter Pressingzugriff
- *  5. Geschlossene Stellung + unsaubere Annahme unter Pressingzugriff
+ * Prüft die Ballverlust-Pfade in fester Priorität:
+ *  1. Passlinie abgefangen (blockers ≥ 1)
+ *  2. Überzahl-Pressing (≥ 3 Presser)
+ *  3. Naher Körperkontakt + unsaubere Annahme
+ *  4. Scharfer Pass + unsaubere Annahme
+ *  5. Scharfer + ungenauer Pass unter Pressingzugriff
+ *  6. Geschlossene Stellung + unsaubere Annahme unter Pressingzugriff
  */
 function isLossDanger(s: Signals): boolean {
+  if (s.laneBlocked) return true;
   if (s.pressers >= 3) return true;
   if (s.closest <= CLOSE_CONTACT_RADIUS && s.dirty) return true;
   if (s.sharp && s.dirty) return true;
@@ -75,7 +86,7 @@ function isLossDanger(s: Signals): boolean {
   return false;
 }
 
-export function evaluate(scene: Scene): Rating {
+export function evaluate(scene: Scene, passLane?: PassLaneAssessment): Rating {
   const holder = findPlayer(scene, scene.ballHolderId);
   if (!holder) return 'open';
 
@@ -92,16 +103,19 @@ export function evaluate(scene: Scene): Rating {
     soft: scene.lastPass?.velocity === 'soft',
     openStance: scene.lastReception?.stance === 'open',
     closedStance: scene.lastReception?.stance === 'closed',
+    laneBlocked: (passLane?.blockers ?? 0) >= 1,
+    laneThreatened: (passLane?.threats ?? 0) >= 1,
   };
 
   if (isLossDanger(signals)) return 'loss-danger';
 
-  const { pressers, dirty, imprecise, soft, openStance } = signals;
+  const { pressers, dirty, imprecise, soft, openStance, laneThreatened } = signals;
   const impreciseCushioned =
     imprecise && (soft || openStance) && pressers <= 1 && !dirty;
   const impreciseEscalates = imprecise && !impreciseCushioned;
 
-  if (pressers >= 2 || dirty || impreciseEscalates) return 'risky';
+  if (pressers >= 2 || dirty || impreciseEscalates || laneThreatened)
+    return 'risky';
   if (pressers === 1) return 'pressure';
   return 'open';
 }

@@ -13,3 +13,10 @@ export { linesBroken } from './linesBroken';
 export type { LineCount } from './linesBroken';
 export { simulatePassPreview } from './simulatePassPreview';
 export type { PassPreviewOptions } from './simulatePassPreview';
+export {
+  assessPassLane,
+  assessPassLaneInScene,
+  LANE_BLOCK_RADIUS,
+  LANE_THREAT_RADIUS,
+} from './passLane';
+export type { PassLaneAssessment } from './passLane';

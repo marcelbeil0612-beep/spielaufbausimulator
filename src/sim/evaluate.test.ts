@@ -168,6 +168,35 @@ describe('evaluate', () => {
     expect(evaluate(s)).toBe('pressure');
   });
 
+  it('lane blocker (passLane.blockers >= 1) eskaliert auf loss-danger', () => {
+    const scene = createInitialScene();
+    expect(
+      evaluate(scene, { closest: 1, blockers: 1, threats: 0 }),
+    ).toBe('loss-danger');
+  });
+
+  it('lane threat (passLane.threats >= 1) hebt offene Szene auf risky', () => {
+    const scene = createInitialScene();
+    expect(
+      evaluate(scene, { closest: 5, blockers: 0, threats: 1 }),
+    ).toBe('risky');
+  });
+
+  it('ohne passLane-Argument bleibt das bisherige Verhalten gleich', () => {
+    const scene = createInitialScene();
+    expect(evaluate(scene)).toBe('open');
+  });
+
+  it('lane blocker sticht sogar über stiller Pressing-Stufe', () => {
+    const scene = createInitialScene();
+    const liv = scene.home.players.find((p) => p.role === 'LCB')!;
+    const afterPass = { ...scene, ballHolderId: liv.id };
+    const reacted = reactTo(afterPass);
+    expect(
+      evaluate(reacted, { closest: 1, blockers: 1, threats: 0 }),
+    ).toBe('loss-danger');
+  });
+
   it('open Stance entschärft Ungenauigkeit nicht bei 2+ Pressern', () => {
     const scene = createInitialScene();
     const holder = scene.home.players.find((p) => p.id === scene.ballHolderId)!;

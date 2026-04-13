@@ -4,6 +4,7 @@ import type { FirstTouch, Stance } from '@/domain/reception';
 import { reactTo } from './reactTo';
 import type { Rating } from './evaluate';
 import { evaluate } from './evaluate';
+import { assessPassLaneInScene } from './passLane';
 
 export type PassPreviewOptions = {
   readonly velocity?: PassVelocity;
@@ -27,6 +28,8 @@ export function simulatePassPreview(
   if (!target) return evaluate(scene);
   if (target.id === scene.ballHolderId) return evaluate(scene);
 
+  const passLane = assessPassLaneInScene(scene, target.id);
+
   const hypothetical: Scene = {
     ...scene,
     ballHolderId: target.id,
@@ -40,5 +43,5 @@ export function simulatePassPreview(
     },
   };
 
-  return evaluate(reactTo(hypothetical));
+  return evaluate(reactTo(hypothetical), passLane);
 }
