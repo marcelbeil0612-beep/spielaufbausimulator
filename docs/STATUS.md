@@ -4,7 +4,7 @@
 > Für fachliche Details: `docs/DOMAIN.md`. Für Architektur: `docs/ARCHITECTURE.md`.
 > Für Phasen-Plan: `docs/ROADMAP.md`.
 
-**Letzte Aktualisierung:** 2026-04-13 (Track A: Stance/Refactor/IV-hoch/a11y)
+**Letzte Aktualisierung:** 2026-04-13 (Track B: Passlinie + Begründung)
 
 ---
 
@@ -12,10 +12,10 @@
 
 | | |
 |---|---|
-| Tests | 105 grün (16 Dateien) |
+| Tests | 127 grün (17 Dateien) |
 | Typecheck | grün |
 | Lint | grün |
-| Production-Build | 158.15 kB / **51.06 kB gzip** |
+| Production-Build | 162.20 kB / **52.47 kB gzip** |
 | Dev-Smoke | `/` + `/src/App.tsx` + `/src/ui/Pitch.tsx` = 200 |
 
 ---
@@ -35,7 +35,37 @@
 
 ## Letzter Arbeitsblock
 
-**Track A – a11y-Pass + Picker-Refactor** (2026-04-13)
+**Track B – Passlinien-Bewertung + Pass-Pfeil + Begründung** (2026-04-13)
+
+- `domain/geometry.ts`: neuer Helfer `distanceToLineSegment(p, a, b)`
+  (Lotfußpunkt, an den Endpunkten geklemmt) als Basis für Passlinien.
+- `sim/passLane.ts`: `assessPassLane(from, to, opponents)` und
+  `assessPassLaneInScene(scene, targetId)` liefern
+  `{ closest, blockers, threats }`. Konstanten `LANE_BLOCK_RADIUS=3`
+  (Abfang-Reichweite), `LANE_THREAT_RADIUS=6` (eingeengte Passlinie).
+- `evaluate(scene, passLane?)` akzeptiert das Signal optional:
+  - `blockers ≥ 1` ⇒ `loss-danger` (Passlinie abgefangen, sticht sogar
+    eine ruhige Pressing-Stufe).
+  - `threats ≥ 1` eskaliert mindestens auf `risky`.
+  - Ohne Argument ist das Verhalten verhaltenskompatibel – alle
+    bestehenden Aufrufer (Reducer, State) unberührt.
+- `simulatePassPreview` speist die Passlinie automatisch in evaluate
+  ein → Preview-Ringe zeigen Abfang-Gefahr beim Hover.
+- `explainRating(scene, passLane?)` liefert `{ rating, code, reason }`.
+  `evaluate` ist jetzt ein Thin-Wrapper um `explainRating(...).rating`.
+  Der Begründungs-Code folgt der Rating-Priorität (erste greifende Regel
+  gewinnt).
+- UI-Integration:
+  - Pass-Pfeil vom Ballträger zum Ziel auf `:hover` / `:focus-visible`
+    mit Rating-Farbe + `<marker>`-Pfeilspitze (SVG-`<defs>`).
+  - Linien-Badge (1/2/3) mittig auf dem Pfeil, wenn der Pass gegnerische
+    Linien überspielt (Basis: `linesBroken` mit `getLines(scene.away)`).
+  - Begründungs-Zeile unter dem `RatingBadge` (muted, max. 32ch).
+  - aria-label der Pass-Buttons erweitert: „… · N Linien überspielt".
+- +22 Tests (4 Geometrie, 7 passLane, 4 evaluate-Lane-Pfade, 7
+  explainRating-Codes), 127 grün gesamt, Build 162.20 kB / 52.47 kB gzip.
+
+**Vorher: Track A – a11y-Pass + Picker-Refactor** (2026-04-13)
 
 - Alle fünf Pill-Toggle-Picker (Variant/FirstTouch/PassVelocity/PassAccuracy/
   Stance) teilen sich jetzt eine gemeinsame `RadioPillGroup`-Komponente mit
