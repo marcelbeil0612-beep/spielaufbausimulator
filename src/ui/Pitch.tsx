@@ -1,5 +1,5 @@
 import type { Player, Team } from '@/domain/types';
-import type { Rating } from '@/sim';
+import type { LineCount, Rating } from '@/sim';
 import { PITCH_SVG_HEIGHT, PITCH_SVG_WIDTH, toSvgCoord } from './pitchGeometry';
 import styles from './Pitch.module.css';
 
@@ -9,6 +9,7 @@ type Props = {
   readonly ballHolderId: string;
   readonly rating: Rating;
   readonly previewRatings: Readonly<Record<string, Rating>>;
+  readonly previewLines: Readonly<Record<string, LineCount>>;
   readonly onPass: (targetId: string) => void;
 };
 
@@ -18,11 +19,13 @@ export function Pitch({
   ballHolderId,
   rating,
   previewRatings,
+  previewLines,
   onPass,
 }: Props) {
   const holder =
     home.players.find((p) => p.id === ballHolderId) ??
     away.players.find((p) => p.id === ballHolderId);
+  const holderSvg = holder ? toSvgCoord(holder.position) : undefined;
 
   return (
     <div className={styles.wrapper}>
@@ -32,6 +35,13 @@ export function Pitch({
         role="img"
         aria-label="Taktikboard · 4-3-3 gegen 4-4-2 hohes Pressing"
       >
+        <defs>
+          <ArrowheadMarker id="arrow-open" cls={styles.arrowOpen} />
+          <ArrowheadMarker id="arrow-pressure" cls={styles.arrowPressure} />
+          <ArrowheadMarker id="arrow-risky" cls={styles.arrowRisky} />
+          <ArrowheadMarker id="arrow-loss" cls={styles.arrowLoss} />
+        </defs>
+
         <PitchLines />
 
         {away.players.map((player) => (
@@ -45,13 +55,31 @@ export function Pitch({
             isHolder={player.id === ballHolderId}
             rating={rating}
             previewRating={previewRatings[player.id]}
+            previewLineCount={previewLines[player.id]}
+            holderSvg={holderSvg}
             onPass={onPass}
           />
         ))}
 
-        {holder ? <Ball position={toSvgCoord(holder.position)} /> : null}
+        {holderSvg ? <Ball position={holderSvg} /> : null}
       </svg>
     </div>
+  );
+}
+
+function ArrowheadMarker({ id, cls }: { readonly id: string; readonly cls: string }) {
+  return (
+    <marker
+      id={id}
+      viewBox="0 0 10 10"
+      refX="8"
+      refY="5"
+      markerWidth="5"
+      markerHeight="5"
+      orient="auto-start-reverse"
+    >
+      <path className={cls} d="M0 0 L10 5 L0 10 z" />
+    </marker>
   );
 }
 
@@ -72,6 +100,8 @@ type HomeMarkerProps = {
   readonly isHolder: boolean;
   readonly rating: Rating;
   readonly previewRating: Rating | undefined;
+  readonly previewLineCount: LineCount | undefined;
+  readonly holderSvg: { cx: number; cy: number } | undefined;
   readonly onPass: (targetId: string) => void;
 };
 
@@ -80,6 +110,20 @@ const PREVIEW_RING_CLASSES: Record<Rating, string> = {
   pressure: styles.previewRingPressure,
   risky: styles.previewRingRisky,
   'loss-danger': styles.previewRingLoss,
+};
+
+const ARROW_CLASSES: Record<Rating, string> = {
+  open: styles.arrowOpen,
+  pressure: styles.arrowPressure,
+  risky: styles.arrowRisky,
+  'loss-danger': styles.arrowLoss,
+};
+
+const ARROW_MARKER_IDS: Record<Rating, string> = {
+  open: 'arrow-open',
+  pressure: 'arrow-pressure',
+  risky: 'arrow-risky',
+  'loss-danger': 'arrow-loss',
 };
 
 const PREVIEW_LABELS: Record<Rating, string> = {
@@ -94,6 +138,8 @@ function HomeMarker({
   isHolder,
   rating,
   previewRating,
+  previewLineCount,
+  holderSvg,
   onPass,
 }: HomeMarkerProps) {
   const { cx, cy } = toSvgCoord(player.position);
@@ -122,9 +168,13 @@ function HomeMarker({
   const previewClass = previewRating
     ? PREVIEW_RING_CLASSES[previewRating]
     : undefined;
+  const lines = previewLineCount ?? 0;
+  const linesSuffix = lines > 0
+    ? ` · ${lines} ${lines === 1 ? 'Linie' : 'Linien'} überspielt`
+    : '';
   const ariaLabel = previewRating
-    ? `Pass an ${player.label} – Vorschau: ${PREVIEW_LABELS[previewRating]}`
-    : `Pass an ${player.label}`;
+    ? `Pass an ${player.label} – Vorschau: ${PREVIEW_LABELS[previewRating]}${linesSuffix}`
+    : `Pass an ${player.label}${linesSuffix}`;
 
   return (
     <g
@@ -140,6 +190,14 @@ function HomeMarker({
         }
       }}
     >
+      {holderSvg && previewRating ? (
+        <PassArrow
+          from={holderSvg}
+          to={{ cx, cy }}
+          rating={previewRating}
+          lines={lines}
+        />
+      ) : null}
       {previewClass ? (
         <circle
           className={`${styles.previewRing} ${previewClass}`}
@@ -153,6 +211,55 @@ function HomeMarker({
       <text className={styles.homeLabel} x={cx} y={cy}>
         {player.label}
       </text>
+    </g>
+  );
+}
+
+function PassArrow({
+  from,
+  to,
+  rating,
+  lines,
+}: {
+  readonly from: { cx: number; cy: number };
+  readonly to: { cx: number; cy: number };
+  readonly rating: Rating;
+  readonly lines: LineCount;
+}) {
+  const dx = to.cx - from.cx;
+  const dy = to.cy - from.cy;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return null;
+  const nx = dx / len;
+  const ny = dy / len;
+  // Ball und Empfänger-Punkt ausklammern, damit der Pfeil sauber zwischen
+  // den Spielerkreisen verläuft (r≈3.2 + Luft).
+  const inset = 4.2;
+  const x1 = from.cx + nx * inset;
+  const y1 = from.cy + ny * inset;
+  const x2 = to.cx - nx * inset;
+  const y2 = to.cy - ny * inset;
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+
+  return (
+    <g className={styles.passArrowGroup}>
+      <line
+        className={`${styles.passArrow} ${ARROW_CLASSES[rating]}`}
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        markerEnd={`url(#${ARROW_MARKER_IDS[rating]})`}
+      />
+      {lines > 0 ? (
+        <g transform={`translate(${mx} ${my})`}>
+          <circle className={styles.linesBadge} r={2.4} />
+          <text className={styles.linesBadgeLabel} x={0} y={0}>
+            {lines}
+          </text>
+        </g>
+      ) : null}
     </g>
   );
 }

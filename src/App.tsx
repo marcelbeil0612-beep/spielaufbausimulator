@@ -6,18 +6,31 @@ import { PassVelocityPicker } from './ui/PassVelocityPicker';
 import { PassAccuracyPicker } from './ui/PassAccuracyPicker';
 import { StancePicker } from './ui/StancePicker';
 import { useScene } from './state';
-import { evaluate, simulatePassPreview } from './sim';
-import type { Rating } from './sim';
+import { evaluate, linesBroken, simulatePassPreview } from './sim';
+import type { LineCount, Rating } from './sim';
+import { getLines } from '@/domain/lines';
 import styles from './App.module.css';
 
 export function App() {
   const { scene, dispatch } = useScene();
   const rating = evaluate(scene);
+  const holder = scene.home.players.find((p) => p.id === scene.ballHolderId);
+  const awayLines = getLines(scene.away);
   const previewRatings: Record<string, Rating> = Object.fromEntries(
     scene.home.players
       .filter((p) => p.id !== scene.ballHolderId)
       .map((p) => [p.id, simulatePassPreview(scene, p.id)]),
   );
+  const previewLines: Record<string, LineCount> = holder
+    ? Object.fromEntries(
+        scene.home.players
+          .filter((p) => p.id !== scene.ballHolderId)
+          .map((p) => [
+            p.id,
+            linesBroken(holder.position.y, p.position.y, awayLines, 'home'),
+          ]),
+      )
+    : {};
 
   return (
     <main className={styles.app}>
@@ -79,6 +92,7 @@ export function App() {
           ballHolderId={scene.ballHolderId}
           rating={rating}
           previewRatings={previewRatings}
+          previewLines={previewLines}
           onPass={(targetId) => dispatch({ type: 'pass', targetId })}
         />
       </section>
