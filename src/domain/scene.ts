@@ -1,4 +1,4 @@
-import type { Player, Team } from './types';
+import type { PitchCoord, Player, Team } from './types';
 import type { PassOptions } from './pass';
 import { DEFAULT_PASS_OPTIONS } from './pass';
 import type { FirstTouch, Reception, Stance } from './reception';
@@ -7,6 +7,7 @@ import type { StartVariant } from './startVariants';
 import { DEFAULT_START_VARIANT, applyStartVariant } from './startVariants';
 import type { PressIntensity } from './pressIntensity';
 import { DEFAULT_PRESS_INTENSITY } from './pressIntensity';
+import type { BallFlight } from './ballFlight';
 import { teamFromFormation } from './team';
 import { FORMATION_4_3_3, FORMATION_4_4_2 } from './formations';
 import { FORMATION_4_2_3_1 } from './formations/away_4231';
@@ -19,6 +20,8 @@ export type Scene = {
   readonly home: Team;
   readonly away: Team;
   readonly ballHolderId: string;
+  readonly ballPos: PitchCoord;
+  readonly ballFlight: BallFlight | null;
   readonly phase: Phase;
   readonly variant: StartVariant;
   readonly firstTouchPlan: FirstTouch;
@@ -63,6 +66,8 @@ export function createInitialScene(
     home,
     away,
     ballHolderId: gk.id,
+    ballPos: gk.position,
+    ballFlight: null,
     phase: 'buildUp',
     variant,
     firstTouchPlan,

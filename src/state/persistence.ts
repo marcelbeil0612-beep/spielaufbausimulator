@@ -1,5 +1,5 @@
 import type { Scene } from '@/domain/scene';
-import { createInitialScene } from '@/domain/scene';
+import { createInitialScene, findPlayer } from '@/domain/scene';
 import { DEFAULT_PRESS_INTENSITY } from '@/domain/pressIntensity';
 
 export const STORAGE_KEY = 'spielaufbau:scene:v2';
@@ -55,9 +55,13 @@ function tryRead(storage: Storage, key: string): unknown {
 }
 
 function migrate(scene: Scene): Scene {
+  const holder = findPlayer(scene, scene.ballHolderId);
+  const fallbackBallPos = holder?.position ?? { x: 50, y: 0 };
   const next: Scene = {
     ...scene,
     pressIntensity: scene.pressIntensity ?? DEFAULT_PRESS_INTENSITY,
+    ballPos: scene.ballPos ?? fallbackBallPos,
+    ballFlight: scene.ballFlight ?? null,
   };
   return next;
 }

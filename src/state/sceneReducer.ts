@@ -42,6 +42,8 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
       const afterPass: Scene = {
         ...state,
         ballHolderId: target.id,
+        ballPos: target.position,
+        ballFlight: null,
         lastPass,
         lastReception,
       };

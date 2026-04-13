@@ -51,3 +51,9 @@ export {
   maxShiftDistance,
   PLAYER_SHIFT_SPEED_BY_ROLE,
 } from './physics';
+export {
+  ballPositionFromFlight,
+  flightProgress,
+  isFlightComplete,
+} from './ballFlight';
+export type { BallFlight } from './ballFlight';
