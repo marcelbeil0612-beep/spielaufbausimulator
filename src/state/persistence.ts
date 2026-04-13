@@ -9,6 +9,26 @@ export const LEGACY_STORAGE_KEY_V1 = 'spielaufbau:scene:v1';
 const VALID_AWAY_FORMATIONS = ['4-3-3', '4-4-2', '4-2-3-1', '5-3-2'] as const;
 
 /**
+ * Nimmt rohen Persistenzinhalt und liefert eine migrierte `Scene` zurück,
+ * falls der Inhalt strukturell gültig ist. Ansonsten `null`. Geteilt von
+ * `loadScene` und der Lanes-Persistenz.
+ */
+export function parseScene(value: unknown): Scene | null {
+  if (!isScene(value)) return null;
+  return migrate(value);
+}
+
+export function safeLocalStorage(): Storage | undefined {
+  try {
+    return typeof globalThis.localStorage === 'undefined'
+      ? undefined
+      : globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Schreibt die Szene als JSON unter `STORAGE_KEY` in den lokalen Speicher.
  * Schlägt der Zugriff (z. B. privater Modus, kein Speicher) fehl, wird das
  * schweigend ignoriert – Persistenz ist eine Convenience, keine Kernfunktion.
@@ -32,7 +52,8 @@ export function loadScene(storage: Storage | undefined = safeLocalStorage()): Sc
 
   for (const key of [STORAGE_KEY, LEGACY_STORAGE_KEY_V2, LEGACY_STORAGE_KEY_V1]) {
     const value = tryRead(storage, key);
-    if (value && isScene(value)) return migrate(value);
+    const parsed = parseScene(value);
+    if (parsed) return parsed;
   }
   return createInitialScene();
 }
@@ -116,14 +137,4 @@ function isPassPlan(value: unknown): boolean {
       accuracy === 'neutral' ||
       accuracy === 'imprecise')
   );
-}
-
-function safeLocalStorage(): Storage | undefined {
-  try {
-    return typeof globalThis.localStorage === 'undefined'
-      ? undefined
-      : globalThis.localStorage;
-  } catch {
-    return undefined;
-  }
 }

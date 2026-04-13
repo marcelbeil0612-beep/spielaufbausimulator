@@ -1,5 +1,10 @@
 export { useScene } from './useScene';
 export type { SceneDispatch } from './useScene';
+export { useLanes } from './useLanes';
+export type { LanesDispatch } from './useLanes';
 export { useFlightAnimation } from './useFlightAnimation';
 export type { SceneAction } from './sceneReducer';
+export type { Lane, LanesAction, LanesState } from './lanes';
+export { createInitialLanesState, lanesReducer } from './lanes';
 export { loadScene, saveScene, STORAGE_KEY } from './persistence';
+export { LANES_STORAGE_KEY, loadLanes, saveLanes } from './lanesPersistence';
