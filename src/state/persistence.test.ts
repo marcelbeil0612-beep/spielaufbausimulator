@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createInitialScene } from '@/domain/scene';
 import {
   LEGACY_STORAGE_KEY_V1,
+  LEGACY_STORAGE_KEY_V2,
   loadScene,
   saveScene,
   STORAGE_KEY,
@@ -74,12 +75,31 @@ describe('persistence', () => {
     expect(scene.pressIntensity).toBe('high');
   });
 
-  it('v1-Schema wird bei fehlendem v2-Eintrag migriert', () => {
+  it('v1-Schema wird bei fehlendem v3/v2-Eintrag migriert', () => {
     const legacy = { ...createInitialScene() } as Record<string, unknown>;
     delete legacy['pressIntensity'];
     storage.setItem(LEGACY_STORAGE_KEY_V1, JSON.stringify(legacy));
     const scene = loadScene(storage);
     expect(scene.pressIntensity).toBe('high');
     expect(scene.away.formation).toBe('4-4-2');
+  });
+
+  it('v2-Schema wird bei fehlendem v3-Eintrag migriert und fehlende ballPos/ballFlight aufgefüllt', () => {
+    const legacy = { ...createInitialScene() } as Record<string, unknown>;
+    delete legacy['ballPos'];
+    delete legacy['ballFlight'];
+    storage.setItem(LEGACY_STORAGE_KEY_V2, JSON.stringify(legacy));
+    const scene = loadScene(storage);
+    expect(scene.ballFlight).toBeNull();
+    expect(scene.ballPos).toBeDefined();
+  });
+
+  it('v3 hat Vorrang vor v2 und v1', () => {
+    const v3 = createInitialScene('wide');
+    const v2 = { ...createInitialScene('narrow') } as Record<string, unknown>;
+    storage.setItem(STORAGE_KEY, JSON.stringify(v3));
+    storage.setItem(LEGACY_STORAGE_KEY_V2, JSON.stringify(v2));
+    const scene = loadScene(storage);
+    expect(scene.variant).toBe('wide');
   });
 });

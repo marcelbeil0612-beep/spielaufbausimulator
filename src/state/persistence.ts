@@ -2,7 +2,8 @@ import type { Scene } from '@/domain/scene';
 import { createInitialScene, findPlayer } from '@/domain/scene';
 import { DEFAULT_PRESS_INTENSITY } from '@/domain/pressIntensity';
 
-export const STORAGE_KEY = 'spielaufbau:scene:v2';
+export const STORAGE_KEY = 'spielaufbau:scene:v3';
+export const LEGACY_STORAGE_KEY_V2 = 'spielaufbau:scene:v2';
 export const LEGACY_STORAGE_KEY_V1 = 'spielaufbau:scene:v1';
 
 const VALID_AWAY_FORMATIONS = ['4-3-3', '4-4-2', '4-2-3-1', '5-3-2'] as const;
@@ -22,20 +23,17 @@ export function saveScene(scene: Scene, storage: Storage | undefined = safeLocal
 }
 
 /**
- * Lädt die gespeicherte Szene. Versucht zuerst den aktuellen Schlüssel,
- * fällt bei Bedarf auf das v1-Schema zurück und migriert dieses.
- * Bei strukturell invalider oder fehlender Szene wird `createInitialScene`
- * zurückgegeben.
+ * Lädt die gespeicherte Szene. Versucht v3 → v2 → v1 und migriert
+ * das Ergebnis. Bei strukturell invalider oder fehlender Szene wird
+ * `createInitialScene` zurückgegeben.
  */
 export function loadScene(storage: Storage | undefined = safeLocalStorage()): Scene {
   if (!storage) return createInitialScene();
 
-  const current = tryRead(storage, STORAGE_KEY);
-  if (current && isScene(current)) return migrate(current);
-
-  const legacy = tryRead(storage, LEGACY_STORAGE_KEY_V1);
-  if (legacy && isScene(legacy)) return migrate(legacy);
-
+  for (const key of [STORAGE_KEY, LEGACY_STORAGE_KEY_V2, LEGACY_STORAGE_KEY_V1]) {
+    const value = tryRead(storage, key);
+    if (value && isScene(value)) return migrate(value);
+  }
   return createInitialScene();
 }
 
