@@ -67,28 +67,75 @@ type Signals = {
   readonly laneThreatened: boolean;
 };
 
+export type ReasonCode =
+  | 'no-holder'
+  | 'lane-blocked'
+  | 'overload'
+  | 'close-contact-dirty'
+  | 'sharp-dirty'
+  | 'sharp-imprecise-press'
+  | 'closed-dirty-press'
+  | 'lane-threatened'
+  | 'two-pressers'
+  | 'dirty'
+  | 'imprecise'
+  | 'one-presser'
+  | 'open';
+
+export type Evaluation = {
+  readonly rating: Rating;
+  readonly code: ReasonCode;
+  readonly reason: string;
+};
+
+const REASON_TEXT: Record<ReasonCode, string> = {
+  'no-holder': 'Kein Ballträger.',
+  'lane-blocked': 'Gegner fängt die Passlinie ab.',
+  overload: 'Drei oder mehr Gegner im Presseradius.',
+  'close-contact-dirty': 'Gegner im Nahkontakt und unsaubere Annahme.',
+  'sharp-dirty': 'Scharfer Pass auf unsaubere Annahme.',
+  'sharp-imprecise-press': 'Scharfer, ungenauer Pass unter Pressing.',
+  'closed-dirty-press':
+    'Geschlossene Stellung und unsaubere Annahme unter Pressing.',
+  'lane-threatened': 'Passlinie ist eingeengt.',
+  'two-pressers': 'Zwei Gegner im Presseradius.',
+  dirty: 'Unsaubere Annahme.',
+  imprecise: 'Ungenauer Pass ohne Entschärfung.',
+  'one-presser': 'Ein Gegner im Presseradius.',
+  open: 'Offene Situation – kein direkter Druck.',
+};
+
 /**
- * Prüft die Ballverlust-Pfade in fester Priorität:
- *  1. Passlinie abgefangen (blockers ≥ 1)
- *  2. Überzahl-Pressing (≥ 3 Presser)
- *  3. Naher Körperkontakt + unsaubere Annahme
- *  4. Scharfer Pass + unsaubere Annahme
- *  5. Scharfer + ungenauer Pass unter Pressingzugriff
- *  6. Geschlossene Stellung + unsaubere Annahme unter Pressingzugriff
+ * Erste zutreffende Ballverlust-Regel in fester Priorität.
+ * `undefined` wenn kein Pfad greift.
  */
-function isLossDanger(s: Signals): boolean {
-  if (s.laneBlocked) return true;
-  if (s.pressers >= 3) return true;
-  if (s.closest <= CLOSE_CONTACT_RADIUS && s.dirty) return true;
-  if (s.sharp && s.dirty) return true;
-  if (s.sharp && s.imprecise && s.pressers >= 1) return true;
-  if (s.closedStance && s.dirty && s.pressers >= 1) return true;
-  return false;
+function firstLossDangerCode(s: Signals): ReasonCode | undefined {
+  if (s.laneBlocked) return 'lane-blocked';
+  if (s.pressers >= 3) return 'overload';
+  if (s.closest <= CLOSE_CONTACT_RADIUS && s.dirty) return 'close-contact-dirty';
+  if (s.sharp && s.dirty) return 'sharp-dirty';
+  if (s.sharp && s.imprecise && s.pressers >= 1) return 'sharp-imprecise-press';
+  if (s.closedStance && s.dirty && s.pressers >= 1) return 'closed-dirty-press';
+  return undefined;
 }
 
-export function evaluate(scene: Scene, passLane?: PassLaneAssessment): Rating {
+/**
+ * Liefert Bewertung + dominierenden Grund. Die Reihenfolge der Prüfungen
+ * spiegelt die Rating-Priorität (loss-danger > risky > pressure > open):
+ * der erste greifende Pfad bestimmt `code` und `reason`.
+ */
+export function explainRating(
+  scene: Scene,
+  passLane?: PassLaneAssessment,
+): Evaluation {
   const holder = findPlayer(scene, scene.ballHolderId);
-  if (!holder) return 'open';
+  if (!holder) {
+    return {
+      rating: 'open',
+      code: 'no-holder',
+      reason: REASON_TEXT['no-holder'],
+    };
+  }
 
   const attackerIsHome = scene.home.players.some((p) => p.id === holder.id);
   const opp = attackerIsHome ? scene.away : scene.home;
@@ -107,15 +154,45 @@ export function evaluate(scene: Scene, passLane?: PassLaneAssessment): Rating {
     laneThreatened: (passLane?.threats ?? 0) >= 1,
   };
 
-  if (isLossDanger(signals)) return 'loss-danger';
+  const lossCode = firstLossDangerCode(signals);
+  if (lossCode) {
+    return {
+      rating: 'loss-danger',
+      code: lossCode,
+      reason: REASON_TEXT[lossCode],
+    };
+  }
 
   const { pressers, dirty, imprecise, soft, openStance, laneThreatened } = signals;
   const impreciseCushioned =
     imprecise && (soft || openStance) && pressers <= 1 && !dirty;
   const impreciseEscalates = imprecise && !impreciseCushioned;
 
-  if (pressers >= 2 || dirty || impreciseEscalates || laneThreatened)
-    return 'risky';
-  if (pressers === 1) return 'pressure';
-  return 'open';
+  let riskyCode: ReasonCode | undefined;
+  if (laneThreatened) riskyCode = 'lane-threatened';
+  else if (pressers >= 2) riskyCode = 'two-pressers';
+  else if (dirty) riskyCode = 'dirty';
+  else if (impreciseEscalates) riskyCode = 'imprecise';
+
+  if (riskyCode) {
+    return {
+      rating: 'risky',
+      code: riskyCode,
+      reason: REASON_TEXT[riskyCode],
+    };
+  }
+
+  if (pressers === 1) {
+    return {
+      rating: 'pressure',
+      code: 'one-presser',
+      reason: REASON_TEXT['one-presser'],
+    };
+  }
+
+  return { rating: 'open', code: 'open', reason: REASON_TEXT.open };
+}
+
+export function evaluate(scene: Scene, passLane?: PassLaneAssessment): Rating {
+  return explainRating(scene, passLane).rating;
 }

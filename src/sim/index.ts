@@ -7,8 +7,8 @@ export {
   COVER_CENTER_SHIFT,
   LINE_RECOVERY_OFFSET,
 } from './rules';
-export { evaluate, PRESSURE_RADIUS } from './evaluate';
-export type { Rating } from './evaluate';
+export { evaluate, explainRating, PRESSURE_RADIUS } from './evaluate';
+export type { Evaluation, Rating, ReasonCode } from './evaluate';
 export { linesBroken } from './linesBroken';
 export type { LineCount } from './linesBroken';
 export { simulatePassPreview } from './simulatePassPreview';

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Scene } from '@/domain/scene';
 import { createInitialScene } from '@/domain/scene';
 import { reactTo } from './reactTo';
-import { evaluate } from './evaluate';
+import { evaluate, explainRating } from './evaluate';
 
 function movePlayerBy(
   scene: Scene,
@@ -208,5 +208,67 @@ describe('evaluate', () => {
       lastReception: { firstTouch: 'neutral', stance: 'open' },
     };
     expect(evaluate(withFlags)).toBe('risky');
+  });
+});
+
+describe('explainRating', () => {
+  it('Startszene → open mit Code "open"', () => {
+    const scene = createInitialScene();
+    const r = explainRating(scene);
+    expect(r.rating).toBe('open');
+    expect(r.code).toBe('open');
+    expect(r.reason).toMatch(/offen/i);
+  });
+
+  it('Passlinie abgefangen → Code "lane-blocked" schlägt alles andere', () => {
+    const scene = createInitialScene();
+    const r = explainRating(scene, { closest: 1, blockers: 1, threats: 0 });
+    expect(r.rating).toBe('loss-danger');
+    expect(r.code).toBe('lane-blocked');
+  });
+
+  it('Passlinie eingeengt → Code "lane-threatened" auf risky', () => {
+    const scene = createInitialScene();
+    const r = explainRating(scene, { closest: 5, blockers: 0, threats: 1 });
+    expect(r.rating).toBe('risky');
+    expect(r.code).toBe('lane-threatened');
+  });
+
+  it('dirty Annahme → Code "dirty" auf risky', () => {
+    const scene = createInitialScene();
+    const dirty: Scene = {
+      ...scene,
+      lastReception: { firstTouch: 'dirty', stance: 'closed' },
+    };
+    const r = explainRating(dirty);
+    expect(r.rating).toBe('risky');
+    expect(r.code).toBe('dirty');
+  });
+
+  it('Pressing nach Pass auf LIV → Code "one-presser" auf pressure', () => {
+    const scene = createInitialScene();
+    const liv = scene.home.players.find((p) => p.role === 'LCB')!;
+    const afterPass = { ...scene, ballHolderId: liv.id };
+    const reacted = reactTo(afterPass);
+    const r = explainRating(reacted);
+    expect(r.rating).toBe('pressure');
+    expect(r.code).toBe('one-presser');
+  });
+
+  it('Priorität: loss-danger vor risky – sharp+dirty vor dirty-Code', () => {
+    const scene = createInitialScene();
+    const s: Scene = {
+      ...scene,
+      lastPass: { velocity: 'sharp', accuracy: 'neutral' },
+      lastReception: { firstTouch: 'dirty', stance: 'closed' },
+    };
+    const r = explainRating(s);
+    expect(r.rating).toBe('loss-danger');
+    expect(r.code).toBe('sharp-dirty');
+  });
+
+  it('evaluate() bleibt ein Thin-Wrapper mit gleichem Rating wie explainRating()', () => {
+    const scene = createInitialScene();
+    expect(evaluate(scene)).toBe(explainRating(scene).rating);
   });
 });
