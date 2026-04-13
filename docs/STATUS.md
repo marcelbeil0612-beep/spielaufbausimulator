@@ -4,7 +4,7 @@
 > Für fachliche Details: `docs/DOMAIN.md`. Für Architektur: `docs/ARCHITECTURE.md`.
 > Für Phasen-Plan: `docs/ROADMAP.md`.
 
-**Letzte Aktualisierung:** 2026-04-13 (Track B: Passlinie + Begründung)
+**Letzte Aktualisierung:** 2026-04-13 (Track C: Gegner-Systeme – Presshöhe & Formation)
 
 ---
 
@@ -12,10 +12,10 @@
 
 | | |
 |---|---|
-| Tests | 127 grün (17 Dateien) |
+| Tests | 239 grün (22 Dateien) |
 | Typecheck | grün |
 | Lint | grün |
-| Production-Build | 162.20 kB / **52.47 kB gzip** |
+| Production-Build | 165.51 kB / **53.29 kB gzip** |
 | Dev-Smoke | `/` + `/src/App.tsx` + `/src/ui/Pitch.tsx` = 200 |
 
 ---
@@ -35,7 +35,42 @@
 
 ## Letzter Arbeitsblock
 
-**Track B – Passlinien-Bewertung + Pass-Pfeil + Begründung** (2026-04-13)
+**Track C – Gegner-Systeme: Presshöhe + Formationen 4-2-3-1 und 5-3-2** (2026-04-13)
+
+- `domain/pressIntensity.ts`: neuer Typ `PressIntensity = 'high' | 'mid' | 'low'`
+  plus Labels und Default `'high'`. `Scene.pressIntensity` fließt in den
+  Reducer (Action `setPressIntensity`, erhalten bei `reset` und
+  `setVariant`).
+- `sim/rules/pressIntensity.ts`: Pro-Regel-Multiplikatoren
+  (`press` / `cover` / `line`). Geringere Intensität vergrößert den
+  Ziel­abstand im Pressing-Schritt und verkleinert Zentrum-Cover
+  sowie Linien-Rückzug. `pressBallHolder`, `coverCenter` und
+  `compactLine` konsultieren den Faktor pro Regelaufruf.
+- `domain/formations/away_4231.ts` und `away_532.ts`: zwei neue
+  Gegner-Formationen (Raute mit Doppelsechs / Fünferkette).
+  `FormationPattern` um `'4-2-3-1'` und `'5-3-2'` erweitert,
+  `createInitialScene` nimmt `awayFormation` als Option an und
+  bleibt per Default bei `'4-4-2'`.
+- `sim/rules/formationContext.ts`: kleine Tabelle, die pro
+  `FormationPattern` festlegt, welche Rollen pressen und welche
+  Zentrum absichern. 4-2-3-1 presst mit dem ballnahen Sechser (CDM)
+  und sichert mit dem Zehner (CAM); 4-4-2, 4-3-3 und 5-3-2 bleiben
+  stürmerzentriert.
+- UI: zwei neue Pill-Toggle-Picker (`OpponentPicker`,
+  `PressIntensityPicker`) reihen sich neben die bestehenden
+  Picker – Tastaturbedienung und Styling teilen sich die
+  `RadioPillGroup`.
+- Persistenz: Schema-Schlüssel auf `spielaufbau:scene:v2` gehoben.
+  `loadScene` liest zuerst v2, fällt auf den v1-Eintrag zurück und
+  migriert Szenen ohne `pressIntensity` auf den Default `high`.
+- `sim/matrix.test.ts`: parametrisierte Matrix über
+  Formation × Presshöhe × Startvariante (3×3×3). Prüft initiale und
+  Post-Pass-Ratings sowie ein Preview-Rating auf den Sechser,
+  plus Plausibilität (`high` ≥ `mid` ≥ `low` im Druckniveau nach
+  Pass auf LIV).
+- +112 Tests (239 gesamt), Build 165.51 kB / 53.29 kB gzip.
+
+**Vorher: Track B – Passlinien-Bewertung + Pass-Pfeil + Begründung** (2026-04-13)
 
 - `domain/geometry.ts`: neuer Helfer `distanceToLineSegment(p, a, b)`
   (Lotfußpunkt, an den Endpunkten geklemmt) als Basis für Passlinien.

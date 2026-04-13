@@ -78,7 +78,9 @@ Priorität: `loss-danger` > `risky` > `pressure` > `open`.
 ## 6. Persistenz (Stand MVP)
 
 - **Lokal im Browser** über `state/persistence.ts`.
-- Storage-Key: `spielaufbau:scene:v1` (eine Szene als JSON).
+- Aktueller Storage-Key: `spielaufbau:scene:v2`. Schlüssel
+  `spielaufbau:scene:v1` wird beim Laden als Fallback gelesen und
+  migriert (fehlendes `pressIntensity` → Default `high`).
 - Parse- oder Strukturfehler fallen schweigend auf `createInitialScene()` zurück.
 - **Keine** Accounts, Cloud, Mehrbenutzer, DB-Pflicht.
 
@@ -129,6 +131,29 @@ Geplante weitere Varianten:
 
 - erster Kontakt **sauber** ↔ **neutral** ↔ **unsauber**,
 - Passschärfe / Genauigkeit pro Aktion.
+
+## 10a. Gegner-Systeme
+
+Auswählbar über `domain/formations/` (Action `setAwayFormation`):
+
+| Muster | Beschreibung | Presser | Zentrum-Cover |
+|---|---|---|---|
+| `4-4-2` | Doppelspitze, zwei Stürmer auf gleicher Höhe | nächster `ST` | zweiter `ST` |
+| `4-2-3-1` | Raute mit Doppelsechs, hängender Zehn | ballnaher `CDM` | `CAM` |
+| `5-3-2` | Fünferkette, tiefer Block | nächster `ST` | zweiter `ST` |
+
+Die zugehörige Presshöhe (`Scene.pressIntensity`,
+`domain/pressIntensity.ts`) skaliert drei Konstanten gleichzeitig:
+
+| Intensität | `press` (Zielabstand) | `cover` (Schritt) | `line` (Rückzug) |
+|---|---|---|---|
+| `high` | ×1.0 (Status quo) | ×1.0 | ×1.0 |
+| `mid` | ×1.5 (lockerer) | ×0.7 | ×0.7 |
+| `low` | ×2.5 (tiefer Block) | ×0.4 | ×0.4 |
+
+Didaktisch sichtbar: in 4-2-3-1 bleiben beide Stürmer vorne, der
+Sechser rückt heraus – im 5-3-2 hingegen trägt die Doppelspitze den
+Zugriff und die Fünferkette sichert nach hinten.
 
 ## 11. Scope-Grenzen (explizit nicht im Start)
 
