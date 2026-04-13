@@ -16,6 +16,15 @@ import type { FormationPattern } from './types';
 
 export type Phase = 'buildUp';
 
+/**
+ * Eine Szene im Spielaufbau-Simulator. Der Feldzustand (Positionen,
+ * Ballträger, Ballflug) wird begleitet von einem festen Satz didaktischer
+ * Parameter (Variant, Press-Intensität, …) und – für die Sequenz-Idee –
+ * einer `history`: Stack von Pre-Aktion-Snapshots, der Undo erlaubt.
+ *
+ * `history` speichert Scenes ohne eigene History (`SceneSnapshot`), damit
+ * die Datenstruktur nicht rekursiv anwächst.
+ */
 export type Scene = {
   readonly home: Team;
   readonly away: Team;
@@ -30,7 +39,28 @@ export type Scene = {
   readonly pressIntensity: PressIntensity;
   readonly lastPass: PassOptions | null;
   readonly lastReception: Reception | null;
+  readonly history: readonly SceneSnapshot[];
 };
+
+export type SceneSnapshot = Omit<Scene, 'history'>;
+
+export function snapshotScene(scene: Scene): SceneSnapshot {
+  return {
+    home: scene.home,
+    away: scene.away,
+    ballHolderId: scene.ballHolderId,
+    ballPos: scene.ballPos,
+    ballFlight: scene.ballFlight,
+    phase: scene.phase,
+    variant: scene.variant,
+    firstTouchPlan: scene.firstTouchPlan,
+    stancePlan: scene.stancePlan,
+    passPlan: scene.passPlan,
+    pressIntensity: scene.pressIntensity,
+    lastPass: scene.lastPass,
+    lastReception: scene.lastReception,
+  };
+}
 
 export const DEFAULT_AWAY_FORMATION: FormationPattern = '4-4-2';
 
@@ -76,6 +106,7 @@ export function createInitialScene(
     pressIntensity,
     lastPass: null,
     lastReception: null,
+    history: [],
   };
 }
 

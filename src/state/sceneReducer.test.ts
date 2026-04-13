@@ -335,4 +335,56 @@ describe('sceneReducer', () => {
     const wide = sceneReducer(low, { type: 'setVariant', variant: 'wide' });
     expect(wide.pressIntensity).toBe('low');
   });
+
+  it('pass legt einen Pre-Snapshot in history ab', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    expect(start.history).toEqual([]);
+    const next = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    expect(next.history).toHaveLength(1);
+    expect(next.history[0]!.ballHolderId).toBe(start.ballHolderId);
+  });
+
+  it('undo stellt den Zustand vor dem letzten Pass wieder her', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const after = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const undone = sceneReducer(after, { type: 'undo' });
+    expect(undone.ballHolderId).toBe(start.ballHolderId);
+    expect(undone.ballFlight).toBeNull();
+    expect(undone.history).toHaveLength(0);
+  });
+
+  it('undo nacheinander pop-t mehrere Snapshots', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const cdm = start.home.players.find((p) => p.role === 'CDM')!;
+    let state = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    state = sceneReducer(state, { type: 'skipFlight' });
+    state = sceneReducer(state, { type: 'pass', targetId: cdm.id });
+    expect(state.history).toHaveLength(2);
+    state = sceneReducer(state, { type: 'undo' });
+    expect(state.history).toHaveLength(1);
+    expect(state.ballHolderId).toBe(liv.id);
+    state = sceneReducer(state, { type: 'undo' });
+    expect(state.history).toHaveLength(0);
+    expect(state.ballHolderId).toBe(start.ballHolderId);
+  });
+
+  it('undo ohne History ist Referenz-identischer No-Op', () => {
+    const start = createInitialScene();
+    const next = sceneReducer(start, { type: 'undo' });
+    expect(next).toBe(start);
+  });
+
+  it('reset löscht die History', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const withHistory = sceneReducer(start, {
+      type: 'pass',
+      targetId: liv.id,
+    });
+    const reset = sceneReducer(withHistory, { type: 'reset' });
+    expect(reset.history).toEqual([]);
+  });
 });

@@ -108,6 +108,11 @@
   outline-offset: 2px;
 }
 
+.resetButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .stage {
   background: var(--color-surface);
   border-radius: var(--radius-md);

@@ -1,5 +1,5 @@
 import type { Scene } from '@/domain/scene';
-import { createInitialScene, findPlayer } from '@/domain/scene';
+import { createInitialScene, findPlayer, snapshotScene } from '@/domain/scene';
 import type { PassAccuracy, PassOptions, PassVelocity } from '@/domain/pass';
 import type { FirstTouch, Reception, Stance } from '@/domain/reception';
 import type { StartVariant } from '@/domain/startVariants';
@@ -21,6 +21,7 @@ export type SceneAction =
   | { readonly type: 'advanceTime'; readonly dt: number }
   | { readonly type: 'seekFlight'; readonly progress: number }
   | { readonly type: 'skipFlight' }
+  | { readonly type: 'undo' }
   | { readonly type: 'reset' }
   | { readonly type: 'setVariant'; readonly variant: StartVariant }
   | { readonly type: 'setFirstTouchPlan'; readonly firstTouch: FirstTouch }
@@ -70,6 +71,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         ballFlight: flight,
         lastPass,
         lastReception,
+        history: [...state.history, snapshotScene(state)],
       };
     }
     case 'advanceTime': {
@@ -85,6 +87,14 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
     case 'skipFlight': {
       if (!state.ballFlight) return state;
       return advanceFlight(state, state.ballFlight.duration);
+    }
+    case 'undo': {
+      if (state.history.length === 0) return state;
+      const last = state.history[state.history.length - 1]!;
+      return {
+        ...last,
+        history: state.history.slice(0, -1),
+      };
     }
     case 'reset':
       return createInitialScene(

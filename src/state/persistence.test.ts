@@ -102,4 +102,12 @@ describe('persistence', () => {
     const scene = loadScene(storage);
     expect(scene.variant).toBe('wide');
   });
+
+  it('Szene ohne history-Feld wird mit leerer history befüllt', () => {
+    const legacy = { ...createInitialScene() } as Record<string, unknown>;
+    delete legacy['history'];
+    storage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+    const scene = loadScene(storage);
+    expect(scene.history).toEqual([]);
+  });
 });

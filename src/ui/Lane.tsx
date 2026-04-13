@@ -122,6 +122,15 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
           <button
             className={styles.resetButton}
             type="button"
+            onClick={() => dispatch({ type: 'undo' })}
+            disabled={scene.history.length === 0}
+            aria-label="Letzte Aktion rückgängig machen"
+          >
+            ↶ Undo
+          </button>
+          <button
+            className={styles.resetButton}
+            type="button"
             onClick={() => dispatch({ type: 'reset' })}
           >
             Neu starten
