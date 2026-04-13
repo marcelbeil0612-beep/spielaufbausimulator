@@ -57,4 +57,12 @@ describe('applyStartVariant', () => {
       team.players.filter((p) => p.role !== 'LCB' && p.role !== 'RCB');
     expect(nonIV(adjusted)).toEqual(nonIV(home));
   });
+
+  it('switch: beide IVs stehen extrem breit (x=15 und x=85)', () => {
+    const adjusted = applyStartVariant(home, 'switch');
+    const liv = adjusted.players.find((p) => p.role === 'LCB')!;
+    const riv = adjusted.players.find((p) => p.role === 'RCB')!;
+    expect(liv.position.x).toBe(15);
+    expect(riv.position.x).toBe(85);
+  });
 });

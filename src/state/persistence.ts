@@ -73,7 +73,8 @@ function isScene(value: unknown): value is Scene {
     typeof v['variant'] === 'string' &&
     (v['variant'] === 'narrow' ||
       v['variant'] === 'wide' ||
-      v['variant'] === 'high') &&
+      v['variant'] === 'high' ||
+      v['variant'] === 'switch') &&
     typeof v['firstTouchPlan'] === 'string' &&
     (v['firstTouchPlan'] === 'clean' ||
       v['firstTouchPlan'] === 'neutral' ||

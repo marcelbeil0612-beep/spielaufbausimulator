@@ -4,6 +4,8 @@ import type { Scene } from '@/domain/scene';
 import type { FormationPattern } from '@/domain/types';
 import type { StartVariant } from '@/domain/startVariants';
 import type { PressIntensity } from '@/domain/pressIntensity';
+import type { PassVelocity } from '@/domain/pass';
+import { ballFlightTime } from '@/domain/physics';
 import { evaluate } from './evaluate';
 import type { Rating } from './evaluate';
 import { reactTo } from './reactTo';
@@ -11,7 +13,7 @@ import { simulatePassPreview } from './simulatePassPreview';
 
 const FORMATIONS: readonly FormationPattern[] = ['4-4-2', '4-2-3-1', '5-3-2'];
 const PRESS_INTENSITIES: readonly PressIntensity[] = ['high', 'mid', 'low'];
-const VARIANTS: readonly StartVariant[] = ['narrow', 'wide', 'high'];
+const VARIANTS: readonly StartVariant[] = ['narrow', 'wide', 'high', 'switch'];
 
 const VALID_RATINGS: readonly Rating[] = [
   'open',
@@ -95,6 +97,86 @@ describe('Didaktik-Matrix Formation × Presshöhe × Startvariante', () => {
         const low = evaluate(passToLIV(makeScene(formation, 'low', variant)));
         expect(RATING_ORDER[mid]).toBeGreaterThanOrEqual(RATING_ORDER[low]);
         expect(RATING_ORDER[mid]).toBeLessThanOrEqual(RATING_ORDER[high]);
+      }
+    }
+  });
+});
+
+const VELOCITIES: readonly PassVelocity[] = ['soft', 'normal', 'sharp'];
+
+function passWithVelocity(
+  scene: Scene,
+  targetRole: 'LCB' | 'RCB',
+  velocity: PassVelocity,
+): Scene {
+  const holder = scene.home.players.find((p) => p.id === scene.ballHolderId)!;
+  const target = scene.home.players.find((p) => p.role === targetRole)!;
+  const dt = ballFlightTime(holder.position, target.position, velocity);
+  return reactTo({ ...scene, ballHolderId: target.id }, { dt });
+}
+
+describe('Spielverlagerung: Passgeschwindigkeit × Distanz', () => {
+  for (const formation of FORMATIONS) {
+    for (const intensity of PRESS_INTENSITIES) {
+      for (const velocity of VELOCITIES) {
+        const key = `${formation} / ${intensity} / ${velocity}`;
+        it(`${key}: Verlagerung GK→RIV liefert gültiges Rating`, () => {
+          const scene = makeScene(formation, intensity, 'switch');
+          const after = passWithVelocity(scene, 'RCB', velocity);
+          expect(VALID_RATINGS).toContain(evaluate(after));
+        });
+      }
+    }
+  }
+
+  it('scharfer Verlagerungspass lässt dem Gegner mindestens so wenig Zeit wie ein weicher', () => {
+    for (const formation of FORMATIONS) {
+      for (const intensity of PRESS_INTENSITIES) {
+        const scene = makeScene(formation, intensity, 'switch');
+        const soft = evaluate(passWithVelocity(scene, 'RCB', 'soft'));
+        const sharp = evaluate(passWithVelocity(scene, 'RCB', 'sharp'));
+        expect(RATING_ORDER[sharp]).toBeLessThanOrEqual(RATING_ORDER[soft]);
+      }
+    }
+  });
+
+  it('normal liegt zwischen soft und sharp (Verlagerung)', () => {
+    for (const formation of FORMATIONS) {
+      for (const intensity of PRESS_INTENSITIES) {
+        const scene = makeScene(formation, intensity, 'switch');
+        const soft = evaluate(passWithVelocity(scene, 'RCB', 'soft'));
+        const normal = evaluate(passWithVelocity(scene, 'RCB', 'normal'));
+        const sharp = evaluate(passWithVelocity(scene, 'RCB', 'sharp'));
+        expect(RATING_ORDER[normal]).toBeLessThanOrEqual(RATING_ORDER[soft]);
+        expect(RATING_ORDER[normal]).toBeGreaterThanOrEqual(
+          RATING_ORDER[sharp],
+        );
+      }
+    }
+  });
+
+  it('bei identischem Ziel gibt ein scharfer Pass dem Gegner weniger Bewegungsbudget', () => {
+    // Prüft die Physik direkt, unabhängig vom Rating: die Summe der
+    // Verteidiger-Bewegung muss mit schnellerem Pass monoton kleiner sein,
+    // weil reactTo mit dt=flightTime gekappt wird.
+    for (const formation of FORMATIONS) {
+      for (const intensity of PRESS_INTENSITIES) {
+        const scene = makeScene(formation, intensity, 'switch');
+        const shifted = (velocity: PassVelocity): number => {
+          const after = passWithVelocity(scene, 'RCB', velocity);
+          return after.away.players.reduce((sum, p) => {
+            const before = scene.away.players.find((x) => x.id === p.id)!;
+            return (
+              sum +
+              Math.hypot(
+                p.position.x - before.position.x,
+                p.position.y - before.position.y,
+              )
+            );
+          }, 0);
+        };
+        expect(shifted('sharp')).toBeLessThanOrEqual(shifted('normal'));
+        expect(shifted('normal')).toBeLessThanOrEqual(shifted('soft'));
       }
     }
   });

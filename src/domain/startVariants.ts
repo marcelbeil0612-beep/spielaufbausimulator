@@ -6,19 +6,24 @@ import type { Team } from './types';
  *  - `wide`:   LIV steht breit, näher zur Außenlinie
  *  - `high`:   beide IVs (LIV + RIV) rücken vor – aggressive, hohe
  *              Abwehrlinie mit größerem Abstand zum TW
+ *  - `switch`: beide IVs stehen extrem breit (Spielverlagerungs-Fall).
+ *              Lehrt den Zusammenhang zwischen Passschärfe und der Zeit,
+ *              die der Gegner zum Verschieben hat.
  */
-export type StartVariant = 'narrow' | 'wide' | 'high';
+export type StartVariant = 'narrow' | 'wide' | 'high' | 'switch';
 
 export const START_VARIANTS: readonly StartVariant[] = [
   'narrow',
   'wide',
   'high',
+  'switch',
 ] as const;
 
 export const START_VARIANT_LABELS: Record<StartVariant, string> = {
   narrow: 'LIV eng',
   wide: 'LIV breit',
   high: 'IV-Linie hoch',
+  switch: 'Verlagerung',
 };
 
 type IVOverride = Readonly<Partial<{ x: number; y: number }>>;
@@ -34,6 +39,7 @@ const IV_OVERRIDES: Record<
   narrow: { LCB: { x: 36 } },
   wide: { LCB: { x: 22 } },
   high: { LCB: { y: 30 }, RCB: { y: 30 } },
+  switch: { LCB: { x: 15 }, RCB: { x: 85 } },
 };
 
 /**
