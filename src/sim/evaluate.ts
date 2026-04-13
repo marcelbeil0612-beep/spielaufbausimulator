@@ -47,6 +47,34 @@ export const CLOSE_CONTACT_RADIUS = 5;
  *
  * Priorität: loss-danger > risky > pressure > open.
  */
+type Signals = {
+  readonly pressers: number;
+  readonly closest: number;
+  readonly dirty: boolean;
+  readonly imprecise: boolean;
+  readonly sharp: boolean;
+  readonly soft: boolean;
+  readonly openStance: boolean;
+  readonly closedStance: boolean;
+};
+
+/**
+ * Prüft die fünf Ballverlust-Pfade in fester Priorität:
+ *  1. Überzahl-Pressing (≥ 3 Presser)
+ *  2. Naher Körperkontakt + unsaubere Annahme
+ *  3. Scharfer Pass + unsaubere Annahme
+ *  4. Scharfer + ungenauer Pass unter Pressingzugriff
+ *  5. Geschlossene Stellung + unsaubere Annahme unter Pressingzugriff
+ */
+function isLossDanger(s: Signals): boolean {
+  if (s.pressers >= 3) return true;
+  if (s.closest <= CLOSE_CONTACT_RADIUS && s.dirty) return true;
+  if (s.sharp && s.dirty) return true;
+  if (s.sharp && s.imprecise && s.pressers >= 1) return true;
+  if (s.closedStance && s.dirty && s.pressers >= 1) return true;
+  return false;
+}
+
 export function evaluate(scene: Scene): Rating {
   const holder = findPlayer(scene, scene.ballHolderId);
   if (!holder) return 'open';
@@ -55,22 +83,20 @@ export function evaluate(scene: Scene): Rating {
   const opp = attackerIsHome ? scene.away : scene.home;
 
   const distances = opp.players.map((p) => distance(p.position, holder.position));
-  const pressers = distances.filter((d) => d <= PRESSURE_RADIUS).length;
-  const closest = distances.reduce((min, d) => (d < min ? d : min), Infinity);
+  const signals: Signals = {
+    pressers: distances.filter((d) => d <= PRESSURE_RADIUS).length,
+    closest: distances.reduce((min, d) => (d < min ? d : min), Infinity),
+    dirty: scene.lastReception?.firstTouch === 'dirty',
+    imprecise: scene.lastPass?.accuracy === 'imprecise',
+    sharp: scene.lastPass?.velocity === 'sharp',
+    soft: scene.lastPass?.velocity === 'soft',
+    openStance: scene.lastReception?.stance === 'open',
+    closedStance: scene.lastReception?.stance === 'closed',
+  };
 
-  const dirty = scene.lastReception?.firstTouch === 'dirty';
-  const imprecise = scene.lastPass?.accuracy === 'imprecise';
-  const sharp = scene.lastPass?.velocity === 'sharp';
-  const soft = scene.lastPass?.velocity === 'soft';
-  const openStance = scene.lastReception?.stance === 'open';
-  const closedStance = scene.lastReception?.stance === 'closed';
+  if (isLossDanger(signals)) return 'loss-danger';
 
-  if (pressers >= 3) return 'loss-danger';
-  if (closest <= CLOSE_CONTACT_RADIUS && dirty) return 'loss-danger';
-  if (sharp && dirty) return 'loss-danger';
-  if (sharp && imprecise && pressers >= 1) return 'loss-danger';
-  if (closedStance && dirty && pressers >= 1) return 'loss-danger';
-
+  const { pressers, dirty, imprecise, soft, openStance } = signals;
   const impreciseCushioned =
     imprecise && (soft || openStance) && pressers <= 1 && !dirty;
   const impreciseEscalates = imprecise && !impreciseCushioned;
