@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createInitialScene } from '@/domain/scene';
-import { loadScene, saveScene, STORAGE_KEY } from './persistence';
+import {
+  LEGACY_STORAGE_KEY_V1,
+  loadScene,
+  saveScene,
+  STORAGE_KEY,
+} from './persistence';
 
 function freshStorage(): Storage {
   const map = new Map<string, string>();
@@ -67,5 +72,14 @@ describe('persistence', () => {
     storage.setItem(STORAGE_KEY, JSON.stringify(legacy));
     const scene = loadScene(storage);
     expect(scene.pressIntensity).toBe('high');
+  });
+
+  it('v1-Schema wird bei fehlendem v2-Eintrag migriert', () => {
+    const legacy = { ...createInitialScene() } as Record<string, unknown>;
+    delete legacy['pressIntensity'];
+    storage.setItem(LEGACY_STORAGE_KEY_V1, JSON.stringify(legacy));
+    const scene = loadScene(storage);
+    expect(scene.pressIntensity).toBe('high');
+    expect(scene.away.formation).toBe('4-4-2');
   });
 });

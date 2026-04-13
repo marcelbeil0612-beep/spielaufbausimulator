@@ -5,6 +5,8 @@ import { FirstTouchPicker } from './ui/FirstTouchPicker';
 import { PassVelocityPicker } from './ui/PassVelocityPicker';
 import { PassAccuracyPicker } from './ui/PassAccuracyPicker';
 import { StancePicker } from './ui/StancePicker';
+import { OpponentPicker } from './ui/OpponentPicker';
+import { PressIntensityPicker } from './ui/PressIntensityPicker';
 import { useScene } from './state';
 import { explainRating, linesBroken, simulatePassPreview } from './sim';
 import type { LineCount, Rating } from './sim';
@@ -71,6 +73,18 @@ export function App() {
             value={scene.stancePlan}
             onChange={(stance) =>
               dispatch({ type: 'setStancePlan', stance })
+            }
+          />
+          <OpponentPicker
+            value={scene.away.formation}
+            onChange={(awayFormation) =>
+              dispatch({ type: 'setAwayFormation', awayFormation })
+            }
+          />
+          <PressIntensityPicker
+            value={scene.pressIntensity}
+            onChange={(pressIntensity) =>
+              dispatch({ type: 'setPressIntensity', pressIntensity })
             }
           />
         </div>

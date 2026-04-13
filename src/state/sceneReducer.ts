@@ -4,6 +4,7 @@ import type { PassAccuracy, PassOptions, PassVelocity } from '@/domain/pass';
 import type { FirstTouch, Reception, Stance } from '@/domain/reception';
 import type { StartVariant } from '@/domain/startVariants';
 import type { PressIntensity } from '@/domain/pressIntensity';
+import type { FormationPattern } from '@/domain/types';
 import { reactTo } from '@/sim/reactTo';
 
 export type SceneAction =
@@ -21,7 +22,8 @@ export type SceneAction =
   | { readonly type: 'setPassVelocity'; readonly velocity: PassVelocity }
   | { readonly type: 'setPassAccuracy'; readonly accuracy: PassAccuracy }
   | { readonly type: 'setStancePlan'; readonly stance: Stance }
-  | { readonly type: 'setPressIntensity'; readonly pressIntensity: PressIntensity };
+  | { readonly type: 'setPressIntensity'; readonly pressIntensity: PressIntensity }
+  | { readonly type: 'setAwayFormation'; readonly awayFormation: FormationPattern };
 
 export function sceneReducer(state: Scene, action: SceneAction): Scene {
   switch (action.type) {
@@ -85,6 +87,16 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
     case 'setPressIntensity':
       if (state.pressIntensity === action.pressIntensity) return state;
       return { ...state, pressIntensity: action.pressIntensity };
+    case 'setAwayFormation':
+      if (state.away.formation === action.awayFormation) return state;
+      return createInitialScene(
+        state.variant,
+        state.firstTouchPlan,
+        state.passPlan,
+        state.stancePlan,
+        state.pressIntensity,
+        action.awayFormation,
+      );
   }
 }
 

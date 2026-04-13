@@ -2,7 +2,10 @@ import type { Scene } from '@/domain/scene';
 import { createInitialScene } from '@/domain/scene';
 import { DEFAULT_PRESS_INTENSITY } from '@/domain/pressIntensity';
 
-export const STORAGE_KEY = 'spielaufbau:scene:v1';
+export const STORAGE_KEY = 'spielaufbau:scene:v2';
+export const LEGACY_STORAGE_KEY_V1 = 'spielaufbau:scene:v1';
+
+const VALID_AWAY_FORMATIONS = ['4-3-3', '4-4-2', '4-2-3-1', '5-3-2'] as const;
 
 /**
  * Schreibt die Szene als JSON unter `STORAGE_KEY` in den lokalen Speicher.
@@ -19,33 +22,44 @@ export function saveScene(scene: Scene, storage: Storage | undefined = safeLocal
 }
 
 /**
- * Lädt die gespeicherte Szene. Bei fehlender, fehlerhaft serialisierter oder
- * strukturell invalider Szene wird auf eine frische `createInitialScene`
- * zurückgefallen.
+ * Lädt die gespeicherte Szene. Versucht zuerst den aktuellen Schlüssel,
+ * fällt bei Bedarf auf das v1-Schema zurück und migriert dieses.
+ * Bei strukturell invalider oder fehlender Szene wird `createInitialScene`
+ * zurückgegeben.
  */
 export function loadScene(storage: Storage | undefined = safeLocalStorage()): Scene {
   if (!storage) return createInitialScene();
+
+  const current = tryRead(storage, STORAGE_KEY);
+  if (current && isScene(current)) return migrate(current);
+
+  const legacy = tryRead(storage, LEGACY_STORAGE_KEY_V1);
+  if (legacy && isScene(legacy)) return migrate(legacy);
+
+  return createInitialScene();
+}
+
+function tryRead(storage: Storage, key: string): unknown {
   let raw: string | null;
   try {
-    raw = storage.getItem(STORAGE_KEY);
+    raw = storage.getItem(key);
   } catch {
-    return createInitialScene();
+    return undefined;
   }
-  if (!raw) return createInitialScene();
+  if (!raw) return undefined;
   try {
-    const parsed: unknown = JSON.parse(raw);
-    if (isScene(parsed)) return migrate(parsed);
-    return createInitialScene();
+    return JSON.parse(raw);
   } catch {
-    return createInitialScene();
+    return undefined;
   }
 }
 
 function migrate(scene: Scene): Scene {
-  if (scene.pressIntensity === undefined) {
-    return { ...scene, pressIntensity: DEFAULT_PRESS_INTENSITY };
-  }
-  return scene;
+  const next: Scene = {
+    ...scene,
+    pressIntensity: scene.pressIntensity ?? DEFAULT_PRESS_INTENSITY,
+  };
+  return next;
 }
 
 function isScene(value: unknown): value is Scene {
@@ -66,10 +80,9 @@ function isScene(value: unknown): value is Scene {
     (v['stancePlan'] === 'open' || v['stancePlan'] === 'closed') &&
     isPassPlan(v['passPlan']) &&
     isPressIntensity(v['pressIntensity']) &&
+    isAwayTeam(v['away']) &&
     typeof v['home'] === 'object' &&
     v['home'] !== null &&
-    typeof v['away'] === 'object' &&
-    v['away'] !== null &&
     'lastPass' in v &&
     'lastReception' in v
   );
@@ -77,6 +90,16 @@ function isScene(value: unknown): value is Scene {
 
 function isPressIntensity(value: unknown): boolean {
   return value === undefined || value === 'high' || value === 'mid' || value === 'low';
+}
+
+function isAwayTeam(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  const formation = v['formation'];
+  return (
+    typeof formation === 'string' &&
+    (VALID_AWAY_FORMATIONS as readonly string[]).includes(formation)
+  );
 }
 
 function isPassPlan(value: unknown): boolean {
