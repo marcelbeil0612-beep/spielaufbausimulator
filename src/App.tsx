@@ -6,14 +6,15 @@ import { PassVelocityPicker } from './ui/PassVelocityPicker';
 import { PassAccuracyPicker } from './ui/PassAccuracyPicker';
 import { StancePicker } from './ui/StancePicker';
 import { useScene } from './state';
-import { evaluate, linesBroken, simulatePassPreview } from './sim';
+import { explainRating, linesBroken, simulatePassPreview } from './sim';
 import type { LineCount, Rating } from './sim';
 import { getLines } from '@/domain/lines';
 import styles from './App.module.css';
 
 export function App() {
   const { scene, dispatch } = useScene();
-  const rating = evaluate(scene);
+  const evaluation = explainRating(scene);
+  const rating = evaluation.rating;
   const holder = scene.home.players.find((p) => p.id === scene.ballHolderId);
   const awayLines = getLines(scene.away);
   const previewRatings: Record<string, Rating> = Object.fromEntries(
@@ -74,7 +75,10 @@ export function App() {
           />
         </div>
         <div className={styles.statusGroup}>
-          <RatingBadge rating={rating} />
+          <div className={styles.ratingGroup}>
+            <RatingBadge rating={rating} />
+            <p className={styles.ratingReason}>{evaluation.reason}</p>
+          </div>
           <button
             className={styles.resetButton}
             type="button"

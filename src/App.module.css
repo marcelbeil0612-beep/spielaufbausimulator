@@ -56,6 +56,21 @@
   flex-wrap: wrap;
 }
 
+.ratingGroup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.ratingReason {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+  margin: 0;
+  max-width: 32ch;
+}
+
 .resetButton {
   appearance: none;
   background: transparent;
