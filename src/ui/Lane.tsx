@@ -17,6 +17,9 @@ import styles from './Lane.module.css';
 type Props = {
   readonly lane: LaneState;
   readonly dispatch: (action: SceneAction) => void;
+  readonly isActive?: boolean;
+  readonly onActivate?: () => void;
+  readonly onRemove?: () => void;
 };
 
 /**
@@ -24,7 +27,7 @@ type Props = {
  * zugehörige Pitch. Mehrere Lanes nebeneinander bilden den
  * Split-Screen-Vergleich.
  */
-export function Lane({ lane, dispatch }: Props) {
+export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) {
   const { scene } = lane;
   const evaluation = explainRating(scene);
   const rating = evaluation.rating;
@@ -46,8 +49,30 @@ export function Lane({ lane, dispatch }: Props) {
       )
     : {};
 
+  const laneClasses = [styles.lane, isActive ? styles.laneActive : '']
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <article className={styles.lane} aria-label={`Szene ${lane.id}`}>
+    <article
+      className={laneClasses}
+      aria-label={`Szene ${lane.id}`}
+      aria-current={isActive ? 'true' : undefined}
+      onMouseDownCapture={onActivate}
+    >
+      {onRemove ? (
+        <button
+          type="button"
+          className={styles.removeButton}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove();
+          }}
+          aria-label={`Szene ${lane.id} entfernen`}
+        >
+          ×
+        </button>
+      ) : null}
       <section className={styles.controls}>
         <div className={styles.pickers}>
           <VariantPicker
@@ -115,6 +140,7 @@ export function Lane({ lane, dispatch }: Props) {
           previewRatings={previewRatings}
           previewLines={previewLines}
           onPass={(targetId) => dispatch({ type: 'pass', targetId })}
+          idPrefix={`${lane.id}-`}
         />
       </section>
     </article>

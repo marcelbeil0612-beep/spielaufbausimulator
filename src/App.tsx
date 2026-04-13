@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Lane } from './ui/Lane';
 import { Timeline } from './ui/Timeline';
 import { useLanes, useFlightAnimation } from './state';
@@ -19,11 +19,8 @@ export function App() {
     if (activeFlight === null && !playing) setPlaying(true);
   }, [activeFlight, playing]);
 
-  const laneDispatch = useMemo(
-    () => (action: SceneAction) =>
-      dispatch({ type: 'lane', laneId: activeLane.id, action }),
-    [dispatch, activeLane.id],
-  );
+  const canRemove = state.lanes.length > 1;
+  const laneCount = state.lanes.length;
 
   return (
     <main className={styles.app}>
@@ -41,20 +38,71 @@ export function App() {
         onTogglePlay={() => setPlaying((p) => !p)}
         onSeek={(progress) => {
           setPlaying(false);
-          laneDispatch({ type: 'seekFlight', progress });
+          dispatch({
+            type: 'lane',
+            laneId: activeLane.id,
+            action: { type: 'seekFlight', progress },
+          });
         }}
-        onSkip={() => laneDispatch({ type: 'skipFlight' })}
+        onSkip={() =>
+          dispatch({
+            type: 'lane',
+            laneId: activeLane.id,
+            action: { type: 'skipFlight' },
+          })
+        }
         speed={speed}
         onSpeedChange={setSpeed}
       />
 
-      <Lane lane={activeLane} dispatch={laneDispatch} />
+      <section
+        className={styles.lanes}
+        data-count={Math.min(laneCount, 3)}
+        aria-label="Vergleichs-Lanes"
+      >
+        {state.lanes.map((lane) => {
+          const laneDispatch = (action: SceneAction) =>
+            dispatch({ type: 'lane', laneId: lane.id, action });
+          return (
+            <Lane
+              key={lane.id}
+              lane={lane}
+              dispatch={laneDispatch}
+              isActive={lane.id === state.activeLaneId}
+              onActivate={() =>
+                dispatch({ type: 'setActiveLane', laneId: lane.id })
+              }
+              onRemove={
+                canRemove
+                  ? () => dispatch({ type: 'removeLane', laneId: lane.id })
+                  : undefined
+              }
+            />
+          );
+        })}
+      </section>
+
+      <section className={styles.toolbar} aria-label="Lane-Verwaltung">
+        <button
+          type="button"
+          className={styles.addButton}
+          onClick={() => dispatch({ type: 'addLane' })}
+          disabled={laneCount >= 4}
+          aria-label="Neue Vergleichs-Lane hinzufügen"
+        >
+          + Lane (Kopie der aktiven)
+        </button>
+        <span className={styles.laneCount}>
+          {laneCount === 1 ? '1 Lane' : `${laneCount} Lanes`}
+        </span>
+      </section>
 
       <p className={styles.hint}>
         Wähle Startvariante, ersten Kontakt, Passschärfe und Passgenauigkeit –
         tippe dann einen Mitspieler, um zu passen. Der Ball fliegt in Echtzeit
         (verlangsamt) – Gegner verschieben nur so weit, wie sie in der Flugzeit
-        schaffen. Timeline zum Pausieren, Scrubben und Überspringen.
+        schaffen. Timeline steuert die aktive Lane; Play gilt für alle Lanes
+        synchron, damit man den Unterschied im selben Moment sieht.
       </p>
     </main>
   );

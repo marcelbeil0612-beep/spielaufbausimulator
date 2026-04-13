@@ -14,6 +14,12 @@ type Props = {
   readonly previewRatings: Readonly<Record<string, Rating>>;
   readonly previewLines: Readonly<Record<string, LineCount>>;
   readonly onPass: (targetId: string) => void;
+  /**
+   * Präfix für SVG-interne IDs (z. B. `<marker>`-Pfeilspitzen), damit
+   * mehrere Pitches parallel im Dokument nicht um dieselben IDs kämpfen.
+   * Ohne Präfix bleibt das Verhalten identisch zu Single-Pitch.
+   */
+  readonly idPrefix?: string;
 };
 
 export function Pitch({
@@ -26,6 +32,7 @@ export function Pitch({
   previewRatings,
   previewLines,
   onPass,
+  idPrefix = '',
 }: Props) {
   const holder =
     home.players.find((p) => p.id === ballHolderId) ??
@@ -42,10 +49,10 @@ export function Pitch({
         aria-label="Taktikboard · 4-3-3 gegen 4-4-2 hohes Pressing"
       >
         <defs>
-          <ArrowheadMarker id="arrow-open" cls={styles.arrowOpen} />
-          <ArrowheadMarker id="arrow-pressure" cls={styles.arrowPressure} />
-          <ArrowheadMarker id="arrow-risky" cls={styles.arrowRisky} />
-          <ArrowheadMarker id="arrow-loss" cls={styles.arrowLoss} />
+          <ArrowheadMarker id={`${idPrefix}arrow-open`} cls={styles.arrowOpen} />
+          <ArrowheadMarker id={`${idPrefix}arrow-pressure`} cls={styles.arrowPressure} />
+          <ArrowheadMarker id={`${idPrefix}arrow-risky`} cls={styles.arrowRisky} />
+          <ArrowheadMarker id={`${idPrefix}arrow-loss`} cls={styles.arrowLoss} />
         </defs>
 
         <PitchLines />
@@ -64,6 +71,7 @@ export function Pitch({
             previewLineCount={previewLines[player.id]}
             holderSvg={holderSvg}
             onPass={onPass}
+            idPrefix={idPrefix}
           />
         ))}
 
@@ -140,6 +148,7 @@ type HomeMarkerProps = {
   readonly previewLineCount: LineCount | undefined;
   readonly holderSvg: { cx: number; cy: number } | undefined;
   readonly onPass: (targetId: string) => void;
+  readonly idPrefix: string;
 };
 
 const PREVIEW_RING_CLASSES: Record<Rating, string> = {
@@ -178,6 +187,7 @@ function HomeMarker({
   previewLineCount,
   holderSvg,
   onPass,
+  idPrefix,
 }: HomeMarkerProps) {
   const { cx, cy } = toSvgCoord(player.position);
 
@@ -233,6 +243,7 @@ function HomeMarker({
           to={{ cx, cy }}
           rating={previewRating}
           lines={lines}
+          idPrefix={idPrefix}
         />
       ) : null}
       {previewClass ? (
@@ -257,11 +268,13 @@ function PassArrow({
   to,
   rating,
   lines,
+  idPrefix,
 }: {
   readonly from: { cx: number; cy: number };
   readonly to: { cx: number; cy: number };
   readonly rating: Rating;
   readonly lines: LineCount;
+  readonly idPrefix: string;
 }) {
   const dx = to.cx - from.cx;
   const dy = to.cy - from.cy;
@@ -287,7 +300,7 @@ function PassArrow({
         y1={y1}
         x2={x2}
         y2={y2}
-        markerEnd={`url(#${ARROW_MARKER_IDS[rating]})`}
+        markerEnd={`url(#${idPrefix}${ARROW_MARKER_IDS[rating]})`}
       />
       {lines > 0 ? (
         <g transform={`translate(${mx} ${my})`}>
