@@ -10,6 +10,7 @@ import { DEFAULT_PRESS_INTENSITY } from './pressIntensity';
 import { teamFromFormation } from './team';
 import { FORMATION_4_3_3, FORMATION_4_4_2 } from './formations';
 import { FORMATION_4_2_3_1 } from './formations/away_4231';
+import { FORMATION_5_3_2 } from './formations/away_532';
 import type { FormationPattern } from './types';
 
 export type Phase = 'buildUp';
@@ -36,6 +37,8 @@ function awayFormationFor(pattern: FormationPattern) {
       return FORMATION_4_4_2;
     case '4-2-3-1':
       return FORMATION_4_2_3_1;
+    case '5-3-2':
+      return FORMATION_5_3_2;
     case '4-3-3':
       return FORMATION_4_3_3;
   }
