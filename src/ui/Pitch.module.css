@@ -1,0 +1,148 @@
+.wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  aspect-ratio: 68 / 105;
+  max-width: 360px;
+  touch-action: manipulation;
+}
+
+@media (min-width: 720px) {
+  .svg {
+    max-width: 540px;
+  }
+}
+
+.pitch {
+  fill: var(--color-pitch);
+}
+
+.line {
+  stroke: var(--color-pitch-line);
+  stroke-width: 0.25;
+  fill: none;
+}
+
+.dot {
+  fill: var(--color-pitch-line);
+}
+
+/* Heimteam */
+.playerHome {
+  fill: var(--color-home);
+  stroke: var(--color-home-ink);
+  stroke-width: 0.2;
+}
+
+.homeLabel {
+  fill: var(--color-home-ink);
+  font-size: 2.2px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-family: var(--font-sans);
+  pointer-events: none;
+}
+
+.homeGroup {
+  cursor: pointer;
+}
+
+.homeGroup:hover .playerHome,
+.homeGroup:focus-visible .playerHome {
+  stroke-width: 0.5;
+  stroke: var(--color-rating-open);
+}
+
+.homeGroup:focus {
+  outline: none;
+}
+
+.previewRing {
+  fill: none;
+  stroke-width: 0.5;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.homeGroup:hover .previewRing,
+.homeGroup:focus-visible .previewRing {
+  opacity: 0.9;
+}
+
+.previewRingOpen {
+  stroke: var(--color-rating-open);
+}
+
+.previewRingPressure {
+  stroke: var(--color-rating-pressure);
+}
+
+.previewRingRisky {
+  stroke: var(--color-rating-risky);
+}
+
+.previewRingLoss {
+  stroke: var(--color-rating-loss);
+  stroke-width: 0.65;
+}
+
+.holderGroup {
+  cursor: default;
+}
+
+/* Gastteam */
+.playerAway {
+  fill: var(--color-away);
+  stroke: var(--color-away-ink);
+  stroke-width: 0.2;
+}
+
+.awayLabel {
+  fill: var(--color-away-ink);
+  font-size: 2.2px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-family: var(--font-sans);
+  pointer-events: none;
+}
+
+/* Ballhalter-Ring + Ball */
+.ringOpen {
+  fill: none;
+  stroke: var(--color-rating-open);
+  stroke-width: 0.6;
+}
+
+.ringPressure {
+  fill: none;
+  stroke: var(--color-rating-pressure);
+  stroke-width: 0.6;
+}
+
+.ringRisky {
+  fill: none;
+  stroke: var(--color-rating-risky);
+  stroke-width: 0.7;
+}
+
+.ringLoss {
+  fill: none;
+  stroke: var(--color-rating-loss);
+  stroke-width: 0.8;
+}
+
+.ball {
+  fill: var(--color-ball);
+  stroke: #222;
+  stroke-width: 0.15;
+  pointer-events: none;
+}

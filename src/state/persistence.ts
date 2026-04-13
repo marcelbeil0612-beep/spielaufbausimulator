@@ -1,0 +1,86 @@
+import type { Scene } from '@/domain/scene';
+import { createInitialScene } from '@/domain/scene';
+
+export const STORAGE_KEY = 'spielaufbau:scene:v1';
+
+/**
+ * Schreibt die Szene als JSON unter `STORAGE_KEY` in den lokalen Speicher.
+ * Schlägt der Zugriff (z. B. privater Modus, kein Speicher) fehl, wird das
+ * schweigend ignoriert – Persistenz ist eine Convenience, keine Kernfunktion.
+ */
+export function saveScene(scene: Scene, storage: Storage | undefined = safeLocalStorage()): void {
+  if (!storage) return;
+  try {
+    storage.setItem(STORAGE_KEY, JSON.stringify(scene));
+  } catch {
+    // ignorieren – Quota / Security-Fehler brechen die Anwendung nicht.
+  }
+}
+
+/**
+ * Lädt die gespeicherte Szene. Bei fehlender, fehlerhaft serialisierter oder
+ * strukturell invalider Szene wird auf eine frische `createInitialScene`
+ * zurückgefallen.
+ */
+export function loadScene(storage: Storage | undefined = safeLocalStorage()): Scene {
+  if (!storage) return createInitialScene();
+  let raw: string | null;
+  try {
+    raw = storage.getItem(STORAGE_KEY);
+  } catch {
+    return createInitialScene();
+  }
+  if (!raw) return createInitialScene();
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (isScene(parsed)) return parsed;
+    return createInitialScene();
+  } catch {
+    return createInitialScene();
+  }
+}
+
+function isScene(value: unknown): value is Scene {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v['ballHolderId'] === 'string' &&
+    typeof v['phase'] === 'string' &&
+    typeof v['variant'] === 'string' &&
+    (v['variant'] === 'narrow' || v['variant'] === 'wide') &&
+    typeof v['firstTouchPlan'] === 'string' &&
+    (v['firstTouchPlan'] === 'clean' ||
+      v['firstTouchPlan'] === 'neutral' ||
+      v['firstTouchPlan'] === 'dirty') &&
+    isPassPlan(v['passPlan']) &&
+    typeof v['home'] === 'object' &&
+    v['home'] !== null &&
+    typeof v['away'] === 'object' &&
+    v['away'] !== null &&
+    'lastPass' in v &&
+    'lastReception' in v
+  );
+}
+
+function isPassPlan(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  const velocity = v['velocity'];
+  const accuracy = v['accuracy'];
+  return (
+    (velocity === 'soft' || velocity === 'normal' || velocity === 'sharp') &&
+    (accuracy === 'precise' ||
+      accuracy === 'neutral' ||
+      accuracy === 'imprecise')
+  );
+}
+
+function safeLocalStorage(): Storage | undefined {
+  try {
+    return typeof globalThis.localStorage === 'undefined'
+      ? undefined
+      : globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}

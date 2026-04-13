@@ -1,0 +1,40 @@
+.group {
+  display: inline-flex;
+  gap: 0;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.option {
+  appearance: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: none;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.option:hover {
+  color: var(--color-text);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--color-rating-open);
+  outline-offset: 2px;
+}
+
+.active {
+  background: var(--color-home);
+  color: var(--color-home-ink);
+}
+
+.active:hover {
+  color: var(--color-home-ink);
+}

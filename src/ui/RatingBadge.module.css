@@ -1,0 +1,58 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.open {
+  background: color-mix(in srgb, var(--color-rating-open) 15%, transparent);
+  color: var(--color-rating-open);
+  border-color: color-mix(in srgb, var(--color-rating-open) 40%, transparent);
+}
+
+.open .dot {
+  background: var(--color-rating-open);
+}
+
+.pressure {
+  background: color-mix(in srgb, var(--color-rating-pressure) 15%, transparent);
+  color: var(--color-rating-pressure);
+  border-color: color-mix(in srgb, var(--color-rating-pressure) 45%, transparent);
+}
+
+.pressure .dot {
+  background: var(--color-rating-pressure);
+}
+
+.risky {
+  background: color-mix(in srgb, var(--color-rating-risky) 15%, transparent);
+  color: var(--color-rating-risky);
+  border-color: color-mix(in srgb, var(--color-rating-risky) 45%, transparent);
+}
+
+.risky .dot {
+  background: var(--color-rating-risky);
+}
+
+.loss {
+  background: color-mix(in srgb, var(--color-rating-loss) 18%, transparent);
+  color: var(--color-rating-loss);
+  border-color: color-mix(in srgb, var(--color-rating-loss) 55%, transparent);
+}
+
+.loss .dot {
+  background: var(--color-rating-loss);
+}

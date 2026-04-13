@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx vite:*)",
+      "Bash(curl -sS http://127.0.0.1:5180/ --max-time 5)",
+      "Bash(curl -sS http://127.0.0.1:5180/src/main.tsx --max-time 5 -o /dev/null -w \"main.tsx HTTP %{http_code}\\\\n\")",
+      "Bash(curl -sS http://127.0.0.1:5180/src/App.tsx --max-time 5 -o /dev/null -w \"App.tsx HTTP %{http_code}\\\\n\")",
+      "Bash(curl -sS http://127.0.0.1:5180/src/ui/Pitch.tsx --max-time 5 -o /dev/null -w \"Pitch.tsx HTTP %{http_code}\\\\n\")",
+      "Bash(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:5181__TRACKED_VAR__)",
+      "Skill(update-config)",
+      "Bash(npx --yes json -f .claude/settings.local.json)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('.claude/settings.local.json','utf8'\\)\\); console.log\\('JSON valid'\\)\")",
+      "Bash(npm run:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/src/main.tsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/src/App.tsx)",
+      "Bash(curl -s -o /dev/null -w \"root=%{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"main=%{http_code}\\\\n\" http://localhost:5173/src/main.tsx)",
+      "Bash(curl -s -o /dev/null -w \"app=%{http_code}\\\\n\" http://localhost:5173/src/App.tsx)",
+      "Bash(curl -s -o /dev/null -w \"5174-root=%{http_code}\\\\n\" http://localhost:5174/)",
+      "Bash(curl -s -o /dev/null -w \"5174-main=%{http_code}\\\\n\" http://localhost:5174/src/main.tsx)",
+      "Bash(curl -s -o /dev/null -w \"5174-app=%{http_code}\\\\n\" http://localhost:5174/src/App.tsx)",
+      "Bash(curl -s -o /dev/null -w \"variantpicker=%{http_code}\\\\n\" http://localhost:5173/src/ui/VariantPicker.tsx)",
+      "Bash(curl -s -o /dev/null -w \"pitch=%{http_code}\\\\n\" http://localhost:5173/src/ui/Pitch.tsx)",
+      "Bash(kill %1)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(git init:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m 'chore: initial checkpoint \\(Track A baseline\\):*)"
+    ]
+  }
+}
