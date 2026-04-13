@@ -1,8 +1,9 @@
-import type { Player } from '@/domain/types';
+import type { Player, RoleCode } from '@/domain/types';
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { distance, pressPosition } from '@/domain/geometry';
 import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
+import { formationContextFor } from './formationContext';
 
 /**
  * Zielabstand des pressenden Stürmers zum neuen Ballträger (in Welt-Einheiten).
@@ -22,7 +23,8 @@ export function pressBallHolder(scene: Scene): Scene {
   const attackerIsHome = scene.home.players.some((p) => p.id === holder.id);
   const opp = attackerIsHome ? scene.away : scene.home;
 
-  const nearest = nearestStriker(opp.players, holder);
+  const context = formationContextFor(opp.formation);
+  const nearest = nearestOfRoles(opp.players, holder, context.pressRoles);
   if (!nearest) return scene;
 
   const factor = PRESS_INTENSITY_FACTORS[scene.pressIntensity].press;
@@ -41,14 +43,15 @@ export function pressBallHolder(scene: Scene): Scene {
     : { ...scene, home: { ...opp, players: updatedPlayers } };
 }
 
-function nearestStriker(
+function nearestOfRoles(
   players: readonly Player[],
   target: Player,
+  roles: readonly RoleCode[],
 ): Player | undefined {
   let best: Player | undefined;
   let bestDist = Infinity;
   for (const p of players) {
-    if (p.role !== 'ST') continue;
+    if (!roles.includes(p.role)) continue;
     const d = distance(p.position, target.position);
     if (d < bestDist) {
       best = p;
