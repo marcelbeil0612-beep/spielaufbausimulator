@@ -5,6 +5,8 @@ import type { FirstTouch, Reception, Stance } from './reception';
 import { DEFAULT_RECEPTION } from './reception';
 import type { StartVariant } from './startVariants';
 import { DEFAULT_START_VARIANT, applyStartVariant } from './startVariants';
+import type { PressIntensity } from './pressIntensity';
+import { DEFAULT_PRESS_INTENSITY } from './pressIntensity';
 import { teamFromFormation } from './team';
 import { FORMATION_4_3_3, FORMATION_4_4_2 } from './formations';
 
@@ -19,6 +21,7 @@ export type Scene = {
   readonly firstTouchPlan: FirstTouch;
   readonly stancePlan: Stance;
   readonly passPlan: PassOptions;
+  readonly pressIntensity: PressIntensity;
   readonly lastPass: PassOptions | null;
   readonly lastReception: Reception | null;
 };
@@ -28,6 +31,7 @@ export function createInitialScene(
   firstTouchPlan: FirstTouch = DEFAULT_RECEPTION.firstTouch,
   passPlan: PassOptions = DEFAULT_PASS_OPTIONS,
   stancePlan: Stance = DEFAULT_RECEPTION.stance,
+  pressIntensity: PressIntensity = DEFAULT_PRESS_INTENSITY,
 ): Scene {
   const rawHome = teamFromFormation(FORMATION_4_3_3, 'home');
   const home = applyStartVariant(rawHome, variant);
@@ -45,6 +49,7 @@ export function createInitialScene(
     firstTouchPlan,
     stancePlan,
     passPlan,
+    pressIntensity,
     lastPass: null,
     lastReception: null,
   };

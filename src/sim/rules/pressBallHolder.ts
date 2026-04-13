@@ -2,9 +2,12 @@ import type { Player } from '@/domain/types';
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { distance, pressPosition } from '@/domain/geometry';
+import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
 
 /**
  * Zielabstand des pressenden Stürmers zum neuen Ballträger (in Welt-Einheiten).
+ * Bei geringerer Presshöhe vergrößert sich der Zielabstand
+ * (siehe `PRESS_INTENSITY_FACTORS.press`).
  */
 export const PRESS_DISTANCE = 8;
 
@@ -22,7 +25,9 @@ export function pressBallHolder(scene: Scene): Scene {
   const nearest = nearestStriker(opp.players, holder);
   if (!nearest) return scene;
 
-  const newPos = pressPosition(nearest.position, holder.position, PRESS_DISTANCE);
+  const factor = PRESS_INTENSITY_FACTORS[scene.pressIntensity].press;
+  const targetDistance = PRESS_DISTANCE * factor;
+  const newPos = pressPosition(nearest.position, holder.position, targetDistance);
   if (newPos.x === nearest.position.x && newPos.y === nearest.position.y) {
     return scene;
   }

@@ -3,6 +3,7 @@ import { createInitialScene } from '@/domain/scene';
 import type { PassAccuracy, PassOptions, PassVelocity } from '@/domain/pass';
 import type { FirstTouch, Reception, Stance } from '@/domain/reception';
 import type { StartVariant } from '@/domain/startVariants';
+import type { PressIntensity } from '@/domain/pressIntensity';
 import { reactTo } from '@/sim/reactTo';
 
 export type SceneAction =
@@ -19,7 +20,8 @@ export type SceneAction =
   | { readonly type: 'setFirstTouchPlan'; readonly firstTouch: FirstTouch }
   | { readonly type: 'setPassVelocity'; readonly velocity: PassVelocity }
   | { readonly type: 'setPassAccuracy'; readonly accuracy: PassAccuracy }
-  | { readonly type: 'setStancePlan'; readonly stance: Stance };
+  | { readonly type: 'setStancePlan'; readonly stance: Stance }
+  | { readonly type: 'setPressIntensity'; readonly pressIntensity: PressIntensity };
 
 export function sceneReducer(state: Scene, action: SceneAction): Scene {
   switch (action.type) {
@@ -49,6 +51,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.firstTouchPlan,
         state.passPlan,
         state.stancePlan,
+        state.pressIntensity,
       );
     case 'setVariant':
       if (state.variant === action.variant) return state;
@@ -57,6 +60,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.firstTouchPlan,
         state.passPlan,
         state.stancePlan,
+        state.pressIntensity,
       );
     case 'setFirstTouchPlan':
       if (state.firstTouchPlan === action.firstTouch) return state;
@@ -76,6 +80,9 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
     case 'setStancePlan':
       if (state.stancePlan === action.stance) return state;
       return { ...state, stancePlan: action.stance };
+    case 'setPressIntensity':
+      if (state.pressIntensity === action.pressIntensity) return state;
+      return { ...state, pressIntensity: action.pressIntensity };
   }
 }
 

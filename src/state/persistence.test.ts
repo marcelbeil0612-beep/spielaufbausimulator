@@ -60,4 +60,12 @@ describe('persistence', () => {
     const scene = loadScene(undefined);
     expect(scene.ballHolderId).toBe(createInitialScene().ballHolderId);
   });
+
+  it('alte Szene ohne pressIntensity wird auf Default migriert', () => {
+    const legacy = { ...createInitialScene() } as Record<string, unknown>;
+    delete legacy['pressIntensity'];
+    storage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+    const scene = loadScene(storage);
+    expect(scene.pressIntensity).toBe('high');
+  });
 });

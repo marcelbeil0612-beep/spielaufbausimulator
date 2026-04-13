@@ -2,9 +2,11 @@ import type { RoleCode } from '@/domain/types';
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { getLines } from '@/domain/lines';
+import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
 
 /**
  * Rückzug überspielter Linien-Spieler pro Iteration (in Welt-Einheiten).
+ * Wird mit `PRESS_INTENSITY_FACTORS.line` skaliert.
  */
 export const LINE_RECOVERY_OFFSET = 4;
 
@@ -35,7 +37,10 @@ export function compactLine(scene: Scene): Scene {
     : holder.position.y < midY;
   if (!overplayed) return scene;
 
-  const shift = attackerIsHome ? +LINE_RECOVERY_OFFSET : -LINE_RECOVERY_OFFSET;
+  const magnitude =
+    LINE_RECOVERY_OFFSET * PRESS_INTENSITY_FACTORS[scene.pressIntensity].line;
+  if (magnitude === 0) return scene;
+  const shift = attackerIsHome ? +magnitude : -magnitude;
   const updatedPlayers = opp.players.map((p) =>
     MIDFIELD_ROLES.includes(p.role)
       ? { ...p, position: { x: p.position.x, y: p.position.y + shift } }

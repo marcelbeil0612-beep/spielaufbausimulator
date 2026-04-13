@@ -38,3 +38,9 @@ export {
   START_VARIANTS,
 } from './startVariants';
 export type { StartVariant } from './startVariants';
+export {
+  DEFAULT_PRESS_INTENSITY,
+  PRESS_INTENSITIES,
+  PRESS_INTENSITY_LABELS,
+} from './pressIntensity';
+export type { PressIntensity } from './pressIntensity';

@@ -251,4 +251,33 @@ describe('sceneReducer', () => {
     });
     expect(wide.stancePlan).toBe('open');
   });
+
+  it('setPressIntensity aktualisiert die Presshöhe', () => {
+    const start = createInitialScene();
+    const mid = sceneReducer(start, {
+      type: 'setPressIntensity',
+      pressIntensity: 'mid',
+    });
+    expect(mid.pressIntensity).toBe('mid');
+  });
+
+  it('setPressIntensity auf gleichen Wert ist No-op', () => {
+    const start = createInitialScene();
+    const next = sceneReducer(start, {
+      type: 'setPressIntensity',
+      pressIntensity: start.pressIntensity,
+    });
+    expect(next).toBe(start);
+  });
+
+  it('reset und setVariant behalten die pressIntensity', () => {
+    const low = sceneReducer(createInitialScene(), {
+      type: 'setPressIntensity',
+      pressIntensity: 'low',
+    });
+    const reset = sceneReducer(low, { type: 'reset' });
+    expect(reset.pressIntensity).toBe('low');
+    const wide = sceneReducer(low, { type: 'setVariant', variant: 'wide' });
+    expect(wide.pressIntensity).toBe('low');
+  });
 });

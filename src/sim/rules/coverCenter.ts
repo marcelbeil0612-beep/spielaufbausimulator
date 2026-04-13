@@ -2,9 +2,11 @@ import type { Player } from '@/domain/types';
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { distance } from '@/domain/geometry';
+import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
 
 /**
  * Schrittweite, mit der der absichernde Stürmer zur Spielfeldmitte (x=50) zieht.
+ * Wird mit `PRESS_INTENSITY_FACTORS.cover` skaliert.
  */
 export const COVER_CENTER_SHIFT = 4;
 
@@ -26,12 +28,14 @@ export function coverCenter(scene: Scene): Scene {
   const pressing = nearestTo(strikers, holder);
   if (!pressing) return scene;
 
+  const maxShift =
+    COVER_CENTER_SHIFT * PRESS_INTENSITY_FACTORS[scene.pressIntensity].cover;
   let changed = false;
   const updatedPlayers = opp.players.map((p) => {
     if (p.role !== 'ST' || p.id === pressing.id) return p;
     const dx = 50 - p.position.x;
-    if (dx === 0) return p;
-    const step = Math.sign(dx) * Math.min(Math.abs(dx), COVER_CENTER_SHIFT);
+    if (dx === 0 || maxShift === 0) return p;
+    const step = Math.sign(dx) * Math.min(Math.abs(dx), maxShift);
     changed = true;
     return { ...p, position: { x: p.position.x + step, y: p.position.y } };
   });

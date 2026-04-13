@@ -1,5 +1,6 @@
 import type { Scene } from '@/domain/scene';
 import { createInitialScene } from '@/domain/scene';
+import { DEFAULT_PRESS_INTENSITY } from '@/domain/pressIntensity';
 
 export const STORAGE_KEY = 'spielaufbau:scene:v1';
 
@@ -33,11 +34,18 @@ export function loadScene(storage: Storage | undefined = safeLocalStorage()): Sc
   if (!raw) return createInitialScene();
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (isScene(parsed)) return parsed;
+    if (isScene(parsed)) return migrate(parsed);
     return createInitialScene();
   } catch {
     return createInitialScene();
   }
+}
+
+function migrate(scene: Scene): Scene {
+  if (scene.pressIntensity === undefined) {
+    return { ...scene, pressIntensity: DEFAULT_PRESS_INTENSITY };
+  }
+  return scene;
 }
 
 function isScene(value: unknown): value is Scene {
@@ -57,6 +65,7 @@ function isScene(value: unknown): value is Scene {
     typeof v['stancePlan'] === 'string' &&
     (v['stancePlan'] === 'open' || v['stancePlan'] === 'closed') &&
     isPassPlan(v['passPlan']) &&
+    isPressIntensity(v['pressIntensity']) &&
     typeof v['home'] === 'object' &&
     v['home'] !== null &&
     typeof v['away'] === 'object' &&
@@ -64,6 +73,10 @@ function isScene(value: unknown): value is Scene {
     'lastPass' in v &&
     'lastReception' in v
   );
+}
+
+function isPressIntensity(value: unknown): boolean {
+  return value === undefined || value === 'high' || value === 'mid' || value === 'low';
 }
 
 function isPassPlan(value: unknown): boolean {
