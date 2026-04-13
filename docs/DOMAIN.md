@@ -34,16 +34,39 @@ Der Nutzer soll sichtbar machen können, …
 
 ## 4. Simulationsmodell
 
-- **Diskrete, nachvollziehbare Schritte** (keine Echtzeit-Physik).
-- Nach einer **Nutzer-Aktion** wird eine **Gegner-Reaktion** nach festen Regeln ausgelöst.
-- Animationen sind **optional und später** – die Logik bleibt regelbasiert.
+- **Regelbasierte Schritte** mit **physikalischer Zeitachse**: Pässe fliegen
+  messbar lang, Gegner verschieben sich während des Flugs im Rahmen ihres
+  Rollen-Budgets.
+- Nach einer **Nutzer-Aktion** wird eine **Gegner-Reaktion** nach festen
+  Regeln ausgelöst und auf die Flugdauer gekappt.
+- Die Szene ist **scrubbar** (Timeline): jeder Zeitpunkt `elapsed ∈ [0, duration]`
+  ergibt deterministisch dieselbe Folge­szene aus einer Baseline.
 
 ### Begriffe
 
-- **Szene**: Zustand zu einem Zeitpunkt (Ballträger, Positionen beider Teams, Pressing-Art, Höhe, Phase).
+- **Szene**: Zustand zu einem Zeitpunkt (Ballträger, Positionen beider Teams, Pressing-Art, Höhe, Phase, Ballposition, optional aktiver Ballflug).
+- **Ballflug (`BallFlight`)**: ein gerade laufender Pass mit `start`, `end`,
+  `duration`, aktuellem `elapsed` und einer `baseline` (Home- + Away-Snapshot
+  zum Pass-Start). Aus der Baseline wird jede Zwischenszene reproduzierbar
+  abgeleitet.
 - **Aktion**: Eingriff des Nutzers (z. B. Pass, Mitnahme, Positionswechsel).
-- **Reaktion**: regelbasierte Antwort der Gegner-Simulation.
+- **Reaktion**: regelbasierte Antwort der Gegner-Simulation, mit
+  `reactTo(scene, { dt })` auf `dt = elapsed` gekappt.
 - **Bewertung**: Qualitätsaussage zur neuen Szene (s. u.).
+
+### Physik-Primitive (`domain/physics.ts`)
+
+| Größe | Werte | Einheit |
+|---|---|---|
+| `BALL_SPEED_BY_VELOCITY` | soft 10, normal 18, sharp 25 | m/s |
+| `PLAYER_SHIFT_SPEED_BY_ROLE` | GK 4.5, IV 5.0, Mittelfeld 6.0, Außen/Sturm 6.5 | m/s |
+| `ballFlightTime(from, to, v)` | `distance(from, to) / BALL_SPEED_BY_VELOCITY[v]` | s |
+| `maxShiftDistance(dt, role)` | `PLAYER_SHIFT_SPEED_BY_ROLE[role] * dt` | m |
+
+Die 100×100-Koordinaten gelten als **Meter** auf einem idealisierten
+Spielfeld. Ein Verlagerungspass (x=15 → x=85) dauert bei `sharp` ≈ 2.8 s,
+bei `soft` ≈ 7.0 s – die Geschwindigkeit bestimmt, wie weit die Abwehr
+bis zur Ballannahme verschieben konnte.
 
 ## 5. Bewertungsdimensionen
 
@@ -78,9 +101,11 @@ Priorität: `loss-danger` > `risky` > `pressure` > `open`.
 ## 6. Persistenz (Stand MVP)
 
 - **Lokal im Browser** über `state/persistence.ts`.
-- Aktueller Storage-Key: `spielaufbau:scene:v2`. Schlüssel
-  `spielaufbau:scene:v1` wird beim Laden als Fallback gelesen und
-  migriert (fehlendes `pressIntensity` → Default `high`).
+- Aktueller Storage-Key: `spielaufbau:scene:v3`. `loadScene` iteriert
+  v3 → v2 → v1 und migriert transparent:
+  - v1 → v3: fehlendes `pressIntensity` auf Default `high`.
+  - v2 → v3: fehlendes `ballPos` auf Ballträger-Position,
+    `ballFlight` auf `null` (keine gespeicherten Flüge mitten im Flug).
 - Parse- oder Strukturfehler fallen schweigend auf `createInitialScene()` zurück.
 - **Keine** Accounts, Cloud, Mehrbenutzer, DB-Pflicht.
 
@@ -119,18 +144,21 @@ Derselbe Lehrfall, variiert über umschaltbare Startvarianten
 - **LIV eng** (`narrow`, Default): LIV bei x=36 (Standardposition in der
   4-3-3).
 - **LIV breit** (`wide`): LIV bei x=22, näher zur Außenlinie.
+- **IV-Linie hoch** (`high`): beide IVs auf y=30, aggressive Linie.
+- **Verlagerung** (`switch`): LCB=x=15, RCB=x=85 – extrem breite IVs,
+  ideal für den Passgeschwindigkeits-Lehrfall. Ein Diagonalpass GK →
+  RIV durchquert fast das gesamte Feld; der Unterschied zwischen
+  `soft` (~7 s) und `sharp` (~2.8 s) wird direkt sichtbar: Gegner
+  verschieben im soft-Fall über 40 Meter, im sharp-Fall unter 15.
 
-Didaktisch sichtbar wird nach dem Pass TW → LIV:
+Didaktisch sichtbar wird nach dem Pass TW → LIV (bzw. TW → RIV):
 
 - der ballnahe Stürmer muss für die breite Variante einen deutlich größeren
   Laufweg zurücklegen, bevor er auf `PRESS_DISTANCE` steht,
 - die Passlinien ins zentrale Mittelfeld ändern sich (Winkel, Länge),
-- das umliegende Raumangebot um LIV unterscheidet sich.
-
-Geplante weitere Varianten:
-
-- erster Kontakt **sauber** ↔ **neutral** ↔ **unsauber**,
-- Passschärfe / Genauigkeit pro Aktion.
+- das umliegende Raumangebot um LIV unterscheidet sich,
+- bei `switch` bestimmt die Passgeschwindigkeit, wie viel Verschiebung
+  der Gegner bis zur Ballannahme schafft.
 
 ## 10a. Gegner-Systeme
 

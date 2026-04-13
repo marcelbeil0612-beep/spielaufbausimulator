@@ -4,7 +4,7 @@
 > Für fachliche Details: `docs/DOMAIN.md`. Für Architektur: `docs/ARCHITECTURE.md`.
 > Für Phasen-Plan: `docs/ROADMAP.md`.
 
-**Letzte Aktualisierung:** 2026-04-13 (Track C: Gegner-Systeme – Presshöhe & Formation)
+**Letzte Aktualisierung:** 2026-04-13 (Pro-Tool: Zeitachse, Ballflug, Timeline)
 
 ---
 
@@ -12,10 +12,10 @@
 
 | | |
 |---|---|
-| Tests | 239 grün (22 Dateien) |
+| Tests | 329 grün (25 Dateien) |
 | Typecheck | grün |
 | Lint | grün |
-| Production-Build | 165.51 kB / **53.29 kB gzip** |
+| Production-Build | 170.15 kB / **54.96 kB gzip** |
 | Dev-Smoke | `/` + `/src/App.tsx` + `/src/ui/Pitch.tsx` = 200 |
 
 ---
@@ -35,7 +35,61 @@
 
 ## Letzter Arbeitsblock
 
-**Track C – Gegner-Systeme: Presshöhe + Formationen 4-2-3-1 und 5-3-2** (2026-04-13)
+**Pro-Tool – Zeitachse, Ballflug-Physik, Timeline-UI** (2026-04-13)
+
+Der Simulator wird vom Instant-Evaluator zum physik-basierten Lehrwerkzeug
+mit Zeitachse: Pässe fliegen in messbarer Zeit, Gegner verschieben sich
+während des Ballflugs, die Szene ist scrubbar. Ausgerollt in 8 Phasen
+(Commits `phys-*` bis `feat(sim): Spielverlagerungs-Preset …`).
+
+- `domain/physics.ts` (Phase 1): Ballgeschwindigkeiten pro `PassVelocity`
+  (soft 10 / normal 18 / sharp 25 m/s) und Rollen-abhängige
+  Verschiebegeschwindigkeiten (GK 4.5, IV 5.0, Mittelfeld 6.0, Außen/Sturm
+  6.5 m/s). `ballFlightTime(from, to, velocity)` und
+  `maxShiftDistance(dt, role)` als zentrale Primitive.
+- `sim/reactTo.ts` (Phase 2): zweite, optionale `ReactOptions`-Signatur
+  `reactTo(scene, { dt })`. Ohne `dt` identisches Legacy-Verhalten.
+  Mit `dt` kappen alle drei Regeln (`pressBallHolder`, `coverCenter`,
+  `compactLine`) die Schrittweite über `maxShiftDistance(dt, role)` pro
+  Spieler – kein Gegner bewegt sich mehr, als die Flugzeit erlaubt.
+- `domain/ballFlight.ts` + `Scene` (Phase 3): `BallFlight` mit
+  `start / end / duration / elapsed` plus `baseline` (Home- und
+  Away-Snapshot zum Pass-Start). Scene erhält `ballPos: PitchCoord` und
+  `ballFlight: BallFlight | null`. Die Baseline macht Scrubbing und
+  Seek reproduzierbar – jeder `elapsed`-Wert erzeugt deterministisch
+  dieselbe Szene (statt kompoundierter Reaktionen).
+- `sim/advanceFlight.ts` + Reducer (Phase 4): `pass` startet jetzt
+  einen Flug (statt sofortiger Reaktion) und setzt `ballHolderId`
+  semantisch auf den Empfänger. Neue Actions `advanceTime(dt)`,
+  `seekFlight(progress 0..1)`, `skipFlight`. Bei `elapsed ≥ duration`
+  wird der Flug aufgelöst, `ballFlight = null` und `ballPos` rastet
+  auf die Empfänger-Position.
+- `ui/Pitch.tsx` (Phase 5): Ball als eigenständiges SVG-Objekt mit
+  Flight-Trail (gestrichelte Vollspur + solide zurückgelegte Spur).
+  Nudge-Offset nur für den stehenden Ball – im Flug zeigt die
+  Interpolation die echte Ballposition.
+- `ui/Timeline.tsx` + `useFlightAnimation.ts` (Phase 6): Play/Pause,
+  Skip, Scrubber (0..1), Zeitanzeige „0.00 / 1.23 s", Speed-Pills
+  (0.25× / 0.5× / 1×). Default 0.5× für Slow-Motion, damit Trainer
+  die Sub-Sekunden-Flüge tatsächlich sehen. `requestAnimationFrame`
+  treibt `advanceTime(dt)`, Scrubbing pausiert Auto-Play.
+- `persistence.ts` (Phase 7): Schema auf `spielaufbau:scene:v3`
+  gehoben; `loadScene` iteriert v3 → v2 → v1 und migriert fehlende
+  `ballPos` / `ballFlight` / `pressIntensity` transparent.
+- `domain/startVariants.ts` + Matrix-Tests (Phase 8):
+  Startvariante `'switch'` (LCB=x=15, RCB=x=85) macht Spielverlagerung
+  als Lehrfall greifbar. Neuer Test-Block
+  „Spielverlagerung: Passgeschwindigkeit × Distanz" prüft Ratings über
+  `Formation × PressIntensity × PassVelocity` und misst direkt
+  physikalisch, dass scharfe Pässe das Bewegungsbudget der Abwehr
+  monoton verringern.
+
+Ergebnisse: +90 Tests (329 gesamt, 25 Dateien), alle vier Gates grün,
+Build 170.15 kB / 54.96 kB gzip. Der Lehrfall Spielverlagerung ist
+sichtbar (Ballflug durchquert das Feld in ~0.5-1.5 s) und Passschärfe
+hat jetzt eine direkt messbare Wirkung auf die Gegnerverschiebung.
+
+**Vorher: Track C – Gegner-Systeme: Presshöhe + Formationen 4-2-3-1 und 5-3-2** (2026-04-13)
 
 - `domain/pressIntensity.ts`: neuer Typ `PressIntensity = 'high' | 'mid' | 'low'`
   plus Labels und Default `'high'`. `Scene.pressIntensity` fließt in den
@@ -258,7 +312,10 @@ zu konstruieren.
   - `pressBallHolder` (`PRESS_DISTANCE=8`)
   - `coverCenter` (`COVER_CENTER_SHIFT=4`)
   - `compactLine` (`LINE_RECOVERY_OFFSET=4`)
-- `reactTo` ist reine Komposition der drei Regeln.
+- `reactTo(scene, options?)` kappt Spielerbewegung mit `options.dt`
+  (Ballflugzeit) über `maxShiftDistance(dt, role)`.
+- `advanceFlight(scene, elapsed)` leitet die Szene zu jedem Flug-Zeitpunkt
+  deterministisch aus `ballFlight.baseline` ab.
 - `evaluate` vier-stufig (`open` / `pressure` / `risky` / `loss-danger`) mit
   `PRESSURE_RADIUS=12`, `CLOSE_CONTACT_RADIUS=5`.
 - `linesBroken(fromY, toY, opp, side)` zählt 0..3 überspielte Linien.
@@ -266,21 +323,30 @@ zu konstruieren.
   State-Änderung.
 
 **State (`src/state`)**
-- `sceneReducer` mit Actions `pass` (inkl. velocity/accuracy/firstTouch/stance),
-  `reset`, `setVariant`, `setFirstTouchPlan`, `setPassVelocity`,
-  `setPassAccuracy`, `setStancePlan`.
+- `sceneReducer` mit Actions `pass` (startet Ballflug mit Baseline),
+  `advanceTime(dt)`, `seekFlight(progress)`, `skipFlight`, `reset`,
+  `setVariant`, `setFirstTouchPlan`, `setPassVelocity`,
+  `setPassAccuracy`, `setStancePlan`, `setAwayFormation`,
+  `setPressIntensity`.
 - `useScene` (React `useReducer`, Lazy-Init).
-- `persistence.ts`: `localStorage` unter Key `spielaufbau:scene:v1` mit
-  Schema-Check (inkl. `variant`) und Fallback auf `createInitialScene()`.
+- `useFlightAnimation(scene, dispatch, playing, speed)`:
+  `requestAnimationFrame`-Loop, pausiert wenn kein Flug aktiv.
+- `persistence.ts`: `localStorage` unter Key `spielaufbau:scene:v3`,
+  migriert v2 und v1 transparent. Fallback auf `createInitialScene()`.
 - `useScene` lädt initial per Lazy-Init aus `localStorage` und speichert nach
   jeder Zustandsänderung automatisch.
 
 **UI (`src/ui`)**
 - SVG-Pitch (68×105, mobile-first, responsiv bis 540 px Desktop).
 - Pass per Klick/Tastatur auf Heimspieler.
+- Ball als eigenständiges SVG-Objekt mit Flight-Trail (dashed Lane +
+  solide zurückgelegte Spur während des Ballflugs).
+- `Timeline`: Play/Pause, Skip, Scrubber, Zeitanzeige, Speed-Pills
+  (0.25× / 0.5× / 1×, Default 0.5× für Slow-Motion).
 - Ring um Ballträger in allen vier Rating-Farben (`tokens.css`).
 - `RatingBadge` mit allen vier Varianten.
-- `VariantPicker`: Pill-Toggle „LIV eng" / „LIV breit" / „IV-Linie hoch".
+- `VariantPicker`: Pill-Toggle „LIV eng" / „LIV breit" / „IV-Linie hoch" /
+  „Verlagerung".
 - `FirstTouchPicker`: Pill-Toggle „sauber" / „neutral" / „unsauber".
 - `PassVelocityPicker` / `PassAccuracyPicker`: Pill-Toggles für Passschärfe
   und -genauigkeit, wirken auf `scene.passPlan` und damit auf Preview/Pass.
