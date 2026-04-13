@@ -112,6 +112,8 @@ export function App() {
           home={scene.home}
           away={scene.away}
           ballHolderId={scene.ballHolderId}
+          ballPos={scene.ballPos}
+          ballFlight={scene.ballFlight}
           rating={rating}
           previewRatings={previewRatings}
           previewLines={previewLines}

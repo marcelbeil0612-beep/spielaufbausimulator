@@ -1,4 +1,5 @@
-import type { Player, Team } from '@/domain/types';
+import type { PitchCoord, Player, Team } from '@/domain/types';
+import type { BallFlight } from '@/domain/ballFlight';
 import type { LineCount, Rating } from '@/sim';
 import { PITCH_SVG_HEIGHT, PITCH_SVG_WIDTH, toSvgCoord } from './pitchGeometry';
 import styles from './Pitch.module.css';
@@ -7,6 +8,8 @@ type Props = {
   readonly home: Team;
   readonly away: Team;
   readonly ballHolderId: string;
+  readonly ballPos: PitchCoord;
+  readonly ballFlight: BallFlight | null;
   readonly rating: Rating;
   readonly previewRatings: Readonly<Record<string, Rating>>;
   readonly previewLines: Readonly<Record<string, LineCount>>;
@@ -17,6 +20,8 @@ export function Pitch({
   home,
   away,
   ballHolderId,
+  ballPos,
+  ballFlight,
   rating,
   previewRatings,
   previewLines,
@@ -26,6 +31,7 @@ export function Pitch({
     home.players.find((p) => p.id === ballHolderId) ??
     away.players.find((p) => p.id === ballHolderId);
   const holderSvg = holder ? toSvgCoord(holder.position) : undefined;
+  const ballSvg = toSvgCoord(ballPos);
 
   return (
     <div className={styles.wrapper}>
@@ -61,11 +67,42 @@ export function Pitch({
           />
         ))}
 
-        {holderSvg ? <Ball position={holderSvg} /> : null}
+        {ballFlight ? <FlightTrail flight={ballFlight} current={ballSvg} /> : null}
+        <Ball position={ballSvg} nudged={ballFlight === null} />
       </svg>
     </div>
   );
 }
+
+function FlightTrail({
+  flight,
+  current,
+}: {
+  readonly flight: BallFlight;
+  readonly current: { cx: number; cy: number };
+}) {
+  const from = toSvgCoord(flight.start);
+  const to = toSvgCoord(flight.end);
+  return (
+    <g className={styles.flightGroup}>
+      <line
+        className={styles.flightLane}
+        x1={from.cx}
+        y1={from.cy}
+        x2={to.cx}
+        y2={to.cy}
+      />
+      <line
+        className={styles.flightTrail}
+        x1={from.cx}
+        y1={from.cy}
+        x2={current.cx}
+        y2={current.cy}
+      />
+    </g>
+  );
+}
+
 
 function ArrowheadMarker({ id, cls }: { readonly id: string; readonly cls: string }) {
   return (
@@ -264,8 +301,23 @@ function PassArrow({
   );
 }
 
-function Ball({ position }: { readonly position: { cx: number; cy: number } }) {
-  return <circle className={styles.ball} cx={position.cx + 2.4} cy={position.cy - 2.4} r={1.1} />;
+function Ball({
+  position,
+  nudged,
+}: {
+  readonly position: { cx: number; cy: number };
+  readonly nudged: boolean;
+}) {
+  const dx = nudged ? 2.4 : 0;
+  const dy = nudged ? -2.4 : 0;
+  return (
+    <circle
+      className={styles.ball}
+      cx={position.cx + dx}
+      cy={position.cy + dy}
+      r={1.1}
+    />
+  );
 }
 
 function PitchLines() {

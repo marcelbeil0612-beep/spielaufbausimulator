@@ -160,6 +160,26 @@
   pointer-events: none;
 }
 
+.flightGroup {
+  pointer-events: none;
+}
+
+.flightLane {
+  stroke: var(--color-text);
+  stroke-width: 0.25;
+  opacity: 0.2;
+  stroke-dasharray: 1.2 0.8;
+  fill: none;
+}
+
+.flightTrail {
+  stroke: var(--color-ball);
+  stroke-width: 0.6;
+  stroke-linecap: round;
+  opacity: 0.85;
+  fill: none;
+}
+
 /* Pass-Pfeil (Hover/Focus) */
 .passArrowGroup {
   opacity: 0;
