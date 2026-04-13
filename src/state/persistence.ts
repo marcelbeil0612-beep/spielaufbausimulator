@@ -52,6 +52,8 @@ function isScene(value: unknown): value is Scene {
     (v['firstTouchPlan'] === 'clean' ||
       v['firstTouchPlan'] === 'neutral' ||
       v['firstTouchPlan'] === 'dirty') &&
+    typeof v['stancePlan'] === 'string' &&
+    (v['stancePlan'] === 'open' || v['stancePlan'] === 'closed') &&
     isPassPlan(v['passPlan']) &&
     typeof v['home'] === 'object' &&
     v['home'] !== null &&

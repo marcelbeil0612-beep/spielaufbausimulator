@@ -123,4 +123,61 @@ describe('evaluate', () => {
     };
     expect(evaluate(s)).toBe('risky');
   });
+
+  it('loss-danger: geschlossene Stellung + dirty + 1 Presser (ohne Nahkontakt)', () => {
+    const scene = createInitialScene();
+    const liv = scene.home.players.find((p) => p.role === 'LCB')!;
+    const afterPass = { ...scene, ballHolderId: liv.id };
+    const reacted = reactTo(afterPass);
+    const s: Scene = {
+      ...reacted,
+      lastReception: { firstTouch: 'dirty', stance: 'closed' },
+    };
+    expect(evaluate(s)).toBe('loss-danger');
+  });
+
+  it('open Stance ohne Presser + dirty bleibt risky (Stance entschärft dirty nicht)', () => {
+    const scene = createInitialScene();
+    const s: Scene = {
+      ...scene,
+      lastReception: { firstTouch: 'dirty', stance: 'open' },
+    };
+    expect(evaluate(s)).toBe('risky');
+  });
+
+  it('open Stance entschärft Ungenauigkeit ohne Druck (analog soft)', () => {
+    const scene = createInitialScene();
+    const s: Scene = {
+      ...scene,
+      lastPass: { velocity: 'normal', accuracy: 'imprecise' },
+      lastReception: { firstTouch: 'neutral', stance: 'open' },
+    };
+    expect(evaluate(s)).toBe('open');
+  });
+
+  it('open Stance entschärft Ungenauigkeit unter 1 Presser (bleibt pressure)', () => {
+    const scene = createInitialScene();
+    const liv = scene.home.players.find((p) => p.role === 'LCB')!;
+    const afterPass = { ...scene, ballHolderId: liv.id };
+    const reacted = reactTo(afterPass);
+    const s: Scene = {
+      ...reacted,
+      lastPass: { velocity: 'normal', accuracy: 'imprecise' },
+      lastReception: { firstTouch: 'neutral', stance: 'open' },
+    };
+    expect(evaluate(s)).toBe('pressure');
+  });
+
+  it('open Stance entschärft Ungenauigkeit nicht bei 2+ Pressern', () => {
+    const scene = createInitialScene();
+    const holder = scene.home.players.find((p) => p.id === scene.ballHolderId)!;
+    let s: Scene = movePlayerBy(scene, 0, holder.position.x + 5, holder.position.y);
+    s = movePlayerBy(s, 1, holder.position.x - 5, holder.position.y);
+    const withFlags: Scene = {
+      ...s,
+      lastPass: { velocity: 'normal', accuracy: 'imprecise' },
+      lastReception: { firstTouch: 'neutral', stance: 'open' },
+    };
+    expect(evaluate(withFlags)).toBe('risky');
+  });
 });

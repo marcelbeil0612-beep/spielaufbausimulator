@@ -2,7 +2,6 @@ import type { Scene } from '@/domain/scene';
 import { createInitialScene } from '@/domain/scene';
 import type { PassAccuracy, PassOptions, PassVelocity } from '@/domain/pass';
 import type { FirstTouch, Reception, Stance } from '@/domain/reception';
-import { DEFAULT_RECEPTION } from '@/domain/reception';
 import type { StartVariant } from '@/domain/startVariants';
 import { reactTo } from '@/sim/reactTo';
 
@@ -19,7 +18,8 @@ export type SceneAction =
   | { readonly type: 'setVariant'; readonly variant: StartVariant }
   | { readonly type: 'setFirstTouchPlan'; readonly firstTouch: FirstTouch }
   | { readonly type: 'setPassVelocity'; readonly velocity: PassVelocity }
-  | { readonly type: 'setPassAccuracy'; readonly accuracy: PassAccuracy };
+  | { readonly type: 'setPassAccuracy'; readonly accuracy: PassAccuracy }
+  | { readonly type: 'setStancePlan'; readonly stance: Stance };
 
 export function sceneReducer(state: Scene, action: SceneAction): Scene {
   switch (action.type) {
@@ -33,7 +33,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
       };
       const lastReception: Reception = {
         firstTouch: action.firstTouch ?? state.firstTouchPlan,
-        stance: action.stance ?? DEFAULT_RECEPTION.stance,
+        stance: action.stance ?? state.stancePlan,
       };
       const afterPass: Scene = {
         ...state,
@@ -48,6 +48,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.variant,
         state.firstTouchPlan,
         state.passPlan,
+        state.stancePlan,
       );
     case 'setVariant':
       if (state.variant === action.variant) return state;
@@ -55,6 +56,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         action.variant,
         state.firstTouchPlan,
         state.passPlan,
+        state.stancePlan,
       );
     case 'setFirstTouchPlan':
       if (state.firstTouchPlan === action.firstTouch) return state;
@@ -71,6 +73,9 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         ...state,
         passPlan: { ...state.passPlan, accuracy: action.accuracy },
       };
+    case 'setStancePlan':
+      if (state.stancePlan === action.stance) return state;
+      return { ...state, stancePlan: action.stance };
   }
 }
 

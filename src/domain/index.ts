@@ -25,6 +25,8 @@ export {
   DEFAULT_RECEPTION,
   FIRST_TOUCHES,
   FIRST_TOUCH_LABELS,
+  STANCES,
+  STANCE_LABELS,
 } from './reception';
 export type { FirstTouch, Reception, Stance } from './reception';
 export { getLines } from './lines';

@@ -24,7 +24,8 @@ export const CLOSE_CONTACT_RADIUS = 5;
  *  - loss-danger : ≥ 3 Gegner im PRESSURE_RADIUS, ODER
  *                  (Gegner im CLOSE_CONTACT_RADIUS UND dirty Annahme), ODER
  *                  (scharfer Pass UND dirty Annahme), ODER
- *                  (scharfer Pass UND ungenauer Pass UND ≥ 1 Presser)
+ *                  (scharfer Pass UND ungenauer Pass UND ≥ 1 Presser), ODER
+ *                  (geschlossene Stellung UND dirty Annahme UND ≥ 1 Presser)
  *
  * Passschärfe-Modifier:
  *  - `sharp` eskaliert Fehlerquellen: scharfer Pass ohne saubere Annahme
@@ -35,6 +36,14 @@ export const CLOSE_CONTACT_RADIUS = 5;
  *    Druck (≤ 1 Presser, nicht dirty): der Empfänger bekommt mehr Zeit,
  *    das Rating bleibt auf dem Pressing-Niveau statt auf `risky`.
  *  - `normal` bleibt neutral.
+ *
+ * Stance-Modifier (Körperstellung des Empfängers):
+ *  - `closed` eskaliert: dirty Annahme unter Pressing in geschlossener
+ *    Stellung – Spieler dreht sich in den Gegner rein und sieht das Spiel
+ *    nicht – springt direkt auf `loss-danger`.
+ *  - `open` entschärft analog zu `soft` einen reinen Ungenauigkeitsfehler
+ *    unter geringem Druck (≤ 1 Presser, nicht dirty): offene Stellung gibt
+ *    dem Empfänger Übersicht, das Rating bleibt auf dem Pressing-Niveau.
  *
  * Priorität: loss-danger > risky > pressure > open.
  */
@@ -53,13 +62,18 @@ export function evaluate(scene: Scene): Rating {
   const imprecise = scene.lastPass?.accuracy === 'imprecise';
   const sharp = scene.lastPass?.velocity === 'sharp';
   const soft = scene.lastPass?.velocity === 'soft';
+  const openStance = scene.lastReception?.stance === 'open';
+  const closedStance = scene.lastReception?.stance === 'closed';
 
   if (pressers >= 3) return 'loss-danger';
   if (closest <= CLOSE_CONTACT_RADIUS && dirty) return 'loss-danger';
   if (sharp && dirty) return 'loss-danger';
   if (sharp && imprecise && pressers >= 1) return 'loss-danger';
+  if (closedStance && dirty && pressers >= 1) return 'loss-danger';
 
-  const impreciseEscalates = imprecise && !(soft && pressers <= 1 && !dirty);
+  const impreciseCushioned =
+    imprecise && (soft || openStance) && pressers <= 1 && !dirty;
+  const impreciseEscalates = imprecise && !impreciseCushioned;
 
   if (pressers >= 2 || dirty || impreciseEscalates) return 'risky';
   if (pressers === 1) return 'pressure';

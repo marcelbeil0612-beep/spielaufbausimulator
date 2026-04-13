@@ -1,7 +1,7 @@
 import type { Player, Team } from './types';
 import type { PassOptions } from './pass';
 import { DEFAULT_PASS_OPTIONS } from './pass';
-import type { FirstTouch, Reception } from './reception';
+import type { FirstTouch, Reception, Stance } from './reception';
 import { DEFAULT_RECEPTION } from './reception';
 import type { StartVariant } from './startVariants';
 import { DEFAULT_START_VARIANT, applyStartVariant } from './startVariants';
@@ -17,6 +17,7 @@ export type Scene = {
   readonly phase: Phase;
   readonly variant: StartVariant;
   readonly firstTouchPlan: FirstTouch;
+  readonly stancePlan: Stance;
   readonly passPlan: PassOptions;
   readonly lastPass: PassOptions | null;
   readonly lastReception: Reception | null;
@@ -26,6 +27,7 @@ export function createInitialScene(
   variant: StartVariant = DEFAULT_START_VARIANT,
   firstTouchPlan: FirstTouch = DEFAULT_RECEPTION.firstTouch,
   passPlan: PassOptions = DEFAULT_PASS_OPTIONS,
+  stancePlan: Stance = DEFAULT_RECEPTION.stance,
 ): Scene {
   const rawHome = teamFromFormation(FORMATION_4_3_3, 'home');
   const home = applyStartVariant(rawHome, variant);
@@ -41,6 +43,7 @@ export function createInitialScene(
     phase: 'buildUp',
     variant,
     firstTouchPlan,
+    stancePlan,
     passPlan,
     lastPass: null,
     lastReception: null,

@@ -212,4 +212,43 @@ describe('sceneReducer', () => {
     });
     expect(wide.passPlan.accuracy).toBe('imprecise');
   });
+
+  it('setStancePlan aktualisiert die geplante Körperstellung', () => {
+    const start = createInitialScene();
+    const open = sceneReducer(start, { type: 'setStancePlan', stance: 'open' });
+    expect(open.stancePlan).toBe('open');
+  });
+
+  it('setStancePlan auf gleichen Wert ist No-op', () => {
+    const start = createInitialScene();
+    const same = sceneReducer(start, {
+      type: 'setStancePlan',
+      stance: start.stancePlan,
+    });
+    expect(same).toBe(start);
+  });
+
+  it('pass übernimmt stancePlan aus dem State', () => {
+    const withPlan = sceneReducer(createInitialScene(), {
+      type: 'setStancePlan',
+      stance: 'open',
+    });
+    const liv = withPlan.home.players.find((p) => p.role === 'LCB')!;
+    const next = sceneReducer(withPlan, { type: 'pass', targetId: liv.id });
+    expect(next.lastReception?.stance).toBe('open');
+  });
+
+  it('reset und setVariant behalten den stancePlan', () => {
+    const withPlan = sceneReducer(createInitialScene(), {
+      type: 'setStancePlan',
+      stance: 'open',
+    });
+    const reset = sceneReducer(withPlan, { type: 'reset' });
+    expect(reset.stancePlan).toBe('open');
+    const wide = sceneReducer(withPlan, {
+      type: 'setVariant',
+      variant: 'wide',
+    });
+    expect(wide.stancePlan).toBe('open');
+  });
 });

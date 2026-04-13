@@ -22,3 +22,10 @@ export const FIRST_TOUCH_LABELS: Record<FirstTouch, string> = {
   neutral: 'neutral',
   dirty: 'unsauber',
 };
+
+export const STANCES: readonly Stance[] = ['open', 'closed'] as const;
+
+export const STANCE_LABELS: Record<Stance, string> = {
+  open: 'offen',
+  closed: 'geschlossen',
+};

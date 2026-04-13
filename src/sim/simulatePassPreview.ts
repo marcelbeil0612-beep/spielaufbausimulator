@@ -1,7 +1,6 @@
 import type { Scene } from '@/domain/scene';
 import type { PassAccuracy, PassVelocity } from '@/domain/pass';
 import type { FirstTouch, Stance } from '@/domain/reception';
-import { DEFAULT_RECEPTION } from '@/domain/reception';
 import { reactTo } from './reactTo';
 import type { Rating } from './evaluate';
 import { evaluate } from './evaluate';
@@ -37,7 +36,7 @@ export function simulatePassPreview(
     },
     lastReception: {
       firstTouch: options?.firstTouch ?? scene.firstTouchPlan,
-      stance: options?.stance ?? DEFAULT_RECEPTION.stance,
+      stance: options?.stance ?? scene.stancePlan,
     },
   };
 

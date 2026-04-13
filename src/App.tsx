@@ -4,6 +4,7 @@ import { VariantPicker } from './ui/VariantPicker';
 import { FirstTouchPicker } from './ui/FirstTouchPicker';
 import { PassVelocityPicker } from './ui/PassVelocityPicker';
 import { PassAccuracyPicker } from './ui/PassAccuracyPicker';
+import { StancePicker } from './ui/StancePicker';
 import { useScene } from './state';
 import { evaluate, simulatePassPreview } from './sim';
 import type { Rating } from './sim';
@@ -50,6 +51,12 @@ export function App() {
             value={scene.passPlan.accuracy}
             onChange={(accuracy) =>
               dispatch({ type: 'setPassAccuracy', accuracy })
+            }
+          />
+          <StancePicker
+            value={scene.stancePlan}
+            onChange={(stance) =>
+              dispatch({ type: 'setStancePlan', stance })
             }
           />
         </div>
