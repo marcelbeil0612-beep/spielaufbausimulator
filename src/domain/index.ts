@@ -44,3 +44,10 @@ export {
   PRESS_INTENSITY_LABELS,
 } from './pressIntensity';
 export type { PressIntensity } from './pressIntensity';
+export {
+  BALL_SPEED_BY_VELOCITY,
+  ballFlightTime,
+  DEFAULT_PLAYER_SHIFT_SPEED,
+  maxShiftDistance,
+  PLAYER_SHIFT_SPEED_BY_ROLE,
+} from './physics';
