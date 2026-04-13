@@ -2,6 +2,8 @@ import type { Player } from '@/domain/types';
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { distance } from '@/domain/geometry';
+import { maxShiftDistance } from '@/domain/physics';
+import type { ReactOptions } from '../reactTo';
 import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
 import { formationContextFor } from './formationContext';
 
@@ -17,7 +19,7 @@ export const COVER_CENTER_SHIFT = 4;
  * übernimmt, hängt von der Gegner-Formation ab (siehe `formationContext`).
  * Steht kein zweiter Kandidat zur Verfügung, ist die Regel ein No-op.
  */
-export function coverCenter(scene: Scene): Scene {
+export function coverCenter(scene: Scene, options?: ReactOptions): Scene {
   const holder = findPlayer(scene, scene.ballHolderId);
   if (!holder) return scene;
 
@@ -48,7 +50,13 @@ export function coverCenter(scene: Scene): Scene {
     if (!ids.has(p.id)) return p;
     const dx = 50 - p.position.x;
     if (dx === 0) return p;
-    const step = Math.sign(dx) * Math.min(Math.abs(dx), maxShift);
+    const cap =
+      options?.dt !== undefined
+        ? Math.min(maxShift, maxShiftDistance(options.dt, p.role))
+        : maxShift;
+    if (cap <= 0) return p;
+    const step = Math.sign(dx) * Math.min(Math.abs(dx), cap);
+    if (step === 0) return p;
     changed = true;
     return { ...p, position: { x: p.position.x + step, y: p.position.y } };
   });

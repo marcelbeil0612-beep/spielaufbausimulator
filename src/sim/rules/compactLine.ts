@@ -2,6 +2,8 @@ import type { RoleCode } from '@/domain/types';
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { getLines } from '@/domain/lines';
+import { maxShiftDistance } from '@/domain/physics';
+import type { ReactOptions } from '../reactTo';
 import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
 
 /**
@@ -24,7 +26,7 @@ const MIDFIELD_ROLES: readonly RoleCode[] = [
  * in Angriffsrichtung hinter der Linie), schiebt sich diese Linie ein Stück
  * zurück Richtung eigenem Tor, um den Raum hinter sich zu schließen.
  */
-export function compactLine(scene: Scene): Scene {
+export function compactLine(scene: Scene, options?: ReactOptions): Scene {
   const holder = findPlayer(scene, scene.ballHolderId);
   if (!holder) return scene;
 
@@ -40,12 +42,24 @@ export function compactLine(scene: Scene): Scene {
   const magnitude =
     LINE_RECOVERY_OFFSET * PRESS_INTENSITY_FACTORS[scene.pressIntensity].line;
   if (magnitude === 0) return scene;
-  const shift = attackerIsHome ? +magnitude : -magnitude;
-  const updatedPlayers = opp.players.map((p) =>
-    MIDFIELD_ROLES.includes(p.role)
-      ? { ...p, position: { x: p.position.x, y: p.position.y + shift } }
-      : p,
-  );
+  const direction = attackerIsHome ? +1 : -1;
+
+  let changed = false;
+  const updatedPlayers = opp.players.map((p) => {
+    if (!MIDFIELD_ROLES.includes(p.role)) return p;
+    const cap =
+      options?.dt !== undefined
+        ? Math.min(magnitude, maxShiftDistance(options.dt, p.role))
+        : magnitude;
+    if (cap <= 0) return p;
+    changed = true;
+    return {
+      ...p,
+      position: { x: p.position.x, y: p.position.y + direction * cap },
+    };
+  });
+
+  if (!changed) return scene;
 
   return attackerIsHome
     ? { ...scene, away: { ...opp, players: updatedPlayers } }

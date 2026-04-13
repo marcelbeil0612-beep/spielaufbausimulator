@@ -2,6 +2,8 @@ import type { Player, RoleCode } from '@/domain/types';
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { distance, pressPosition } from '@/domain/geometry';
+import { maxShiftDistance } from '@/domain/physics';
+import type { ReactOptions } from '../reactTo';
 import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
 import { formationContextFor } from './formationContext';
 
@@ -16,7 +18,7 @@ export const PRESS_DISTANCE = 8;
  * Regel 1: Der ballnächste gegnerische Stürmer schiebt auf den Ballträger
  * und bleibt `PRESS_DISTANCE` Einheiten vor ihm stehen.
  */
-export function pressBallHolder(scene: Scene): Scene {
+export function pressBallHolder(scene: Scene, options?: ReactOptions): Scene {
   const holder = findPlayer(scene, scene.ballHolderId);
   if (!holder) return scene;
 
@@ -29,7 +31,12 @@ export function pressBallHolder(scene: Scene): Scene {
 
   const factor = PRESS_INTENSITY_FACTORS[scene.pressIntensity].press;
   const targetDistance = PRESS_DISTANCE * factor;
-  const newPos = pressPosition(nearest.position, holder.position, targetDistance);
+  const target = pressPosition(
+    nearest.position,
+    holder.position,
+    targetDistance,
+  );
+  const newPos = capMoveTo(nearest, target, options);
   if (newPos.x === nearest.position.x && newPos.y === nearest.position.y) {
     return scene;
   }
@@ -59,4 +66,24 @@ function nearestOfRoles(
     }
   }
   return best;
+}
+
+function capMoveTo(
+  player: Player,
+  target: { x: number; y: number },
+  options: ReactOptions | undefined,
+): { x: number; y: number } {
+  if (options?.dt === undefined) return target;
+  const dx = target.x - player.position.x;
+  const dy = target.y - player.position.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist === 0) return player.position;
+  const max = maxShiftDistance(options.dt, player.role);
+  if (max >= dist) return target;
+  if (max <= 0) return player.position;
+  const k = max / dist;
+  return {
+    x: player.position.x + dx * k,
+    y: player.position.y + dy * k,
+  };
 }
