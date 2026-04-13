@@ -9,6 +9,8 @@ import type { PressIntensity } from './pressIntensity';
 import { DEFAULT_PRESS_INTENSITY } from './pressIntensity';
 import { teamFromFormation } from './team';
 import { FORMATION_4_3_3, FORMATION_4_4_2 } from './formations';
+import { FORMATION_4_2_3_1 } from './formations/away_4231';
+import type { FormationPattern } from './types';
 
 export type Phase = 'buildUp';
 
@@ -26,16 +28,30 @@ export type Scene = {
   readonly lastReception: Reception | null;
 };
 
+export const DEFAULT_AWAY_FORMATION: FormationPattern = '4-4-2';
+
+function awayFormationFor(pattern: FormationPattern) {
+  switch (pattern) {
+    case '4-4-2':
+      return FORMATION_4_4_2;
+    case '4-2-3-1':
+      return FORMATION_4_2_3_1;
+    case '4-3-3':
+      return FORMATION_4_3_3;
+  }
+}
+
 export function createInitialScene(
   variant: StartVariant = DEFAULT_START_VARIANT,
   firstTouchPlan: FirstTouch = DEFAULT_RECEPTION.firstTouch,
   passPlan: PassOptions = DEFAULT_PASS_OPTIONS,
   stancePlan: Stance = DEFAULT_RECEPTION.stance,
   pressIntensity: PressIntensity = DEFAULT_PRESS_INTENSITY,
+  awayFormation: FormationPattern = DEFAULT_AWAY_FORMATION,
 ): Scene {
   const rawHome = teamFromFormation(FORMATION_4_3_3, 'home');
   const home = applyStartVariant(rawHome, variant);
-  const away = teamFromFormation(FORMATION_4_4_2, 'away');
+  const away = teamFromFormation(awayFormationFor(awayFormation), 'away');
   const gk = home.players.find((p) => p.role === 'GK');
   if (!gk) {
     throw new Error('Heimteam benötigt einen Torwart');

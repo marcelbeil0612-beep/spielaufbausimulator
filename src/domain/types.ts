@@ -23,7 +23,7 @@ export type RoleCode =
   | 'ST'
   | 'RW';
 
-export type FormationPattern = '4-3-3' | '4-4-2';
+export type FormationPattern = '4-3-3' | '4-4-2' | '4-2-3-1';
 
 export type TeamSide = 'home' | 'away';
 

@@ -52,6 +52,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.passPlan,
         state.stancePlan,
         state.pressIntensity,
+        state.away.formation,
       );
     case 'setVariant':
       if (state.variant === action.variant) return state;
@@ -61,6 +62,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.passPlan,
         state.stancePlan,
         state.pressIntensity,
+        state.away.formation,
       );
     case 'setFirstTouchPlan':
       if (state.firstTouchPlan === action.firstTouch) return state;
