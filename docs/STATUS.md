@@ -4,7 +4,7 @@
 > Für fachliche Details: `docs/DOMAIN.md`. Für Architektur: `docs/ARCHITECTURE.md`.
 > Für Phasen-Plan: `docs/ROADMAP.md`.
 
-**Letzte Aktualisierung:** 2026-04-13 (Passschärfe in evaluate)
+**Letzte Aktualisierung:** 2026-04-13 (Track A: Stance/Refactor/IV-hoch/a11y)
 
 ---
 
@@ -12,10 +12,10 @@
 
 | | |
 |---|---|
-| Tests | 93 grün (16 Dateien) |
+| Tests | 105 grün (16 Dateien) |
 | Typecheck | grün |
 | Lint | grün |
-| Production-Build | 157.0 kB / **50.55 kB gzip** |
+| Production-Build | 158.15 kB / **51.06 kB gzip** |
 | Dev-Smoke | `/` + `/src/App.tsx` + `/src/ui/Pitch.tsx` = 200 |
 
 ---
@@ -27,14 +27,59 @@
 - **Phase 2 – Erste Interaktion**: ✅ Passauswahl, Reducer, lokale Persistenz (Modul).
 - **Phase 3 – Regel-Engine**: ✅ 3 Regeln, 4-stufige Bewertung, Pass-Vorschau
   inkl. UI-Integration (Preview-Ring auf Hover/Focus).
-- **Phase 4 – Vergleichsfälle**: 🟡 zwei Varianten fertig (`LIV breit` ↔ `LIV eng`,
-  `Erster Kontakt sauber ↔ neutral ↔ unsauber`).
+- **Phase 4 – Vergleichsfälle**: 🟢 drei Varianten (`LIV eng` / `LIV breit` /
+  `IV-Linie hoch`), `Erster Kontakt`, `Passschärfe`, `Passgenauigkeit`,
+  `Körperstellung` wirken auf Evaluate und Preview-Ringe.
 
 ---
 
 ## Letzter Arbeitsblock
 
-**Passschärfe in `evaluate` wirksam** (2026-04-13)
+**Track A – a11y-Pass + Picker-Refactor** (2026-04-13)
+
+- Alle fünf Pill-Toggle-Picker (Variant/FirstTouch/PassVelocity/PassAccuracy/
+  Stance) teilen sich jetzt eine gemeinsame `RadioPillGroup`-Komponente mit
+  ARIA-konformer Tastaturbedienung: Roving tabindex, Pfeiltasten links/oben ↔
+  rechts/unten zyklisch, Home/End für Ränder.
+- Pitch-Heimspieler bekommen einen dedizierten dashed Focus-Ring
+  (`.focusRing`), der nur bei `:focus-visible` erscheint – Tastatur-Nutzer
+  unterscheiden Fokus klar vom Hover-Zustand.
+- Picker-Dateien sind jetzt ~15-Zeilen-Wrapper um `RadioPillGroup`;
+  Duplikation auf ein Fünftel reduziert.
+- Status-Doku aktualisiert.
+
+**Vorher: Track A – dritte Startvariante „IV-Linie hoch"** (2026-04-13)
+
+- `StartVariant` um `'high'` erweitert. In dieser Variante rücken **beide**
+  Innenverteidiger (LCB + RCB) symmetrisch auf y=30 – aggressive, hohe
+  Abwehrlinie mit größerem Abstand zum TW.
+- `applyStartVariant` datengetrieben über eine Overrides-Tabelle pro
+  IV-Slot; die drei Varianten stehen sauber nebeneinander ohne Branch-Geflecht.
+- Persistenz-Schema akzeptiert `'high'`. VariantPicker rendert die dritte
+  Option automatisch über `START_VARIANTS`.
+
+**Vorher: Track A – isLossDanger-Detektor extrahiert** (2026-04-13)
+
+- Die fünf Ballverlust-Pfade in `evaluate` leben jetzt in einem kleinen,
+  dokumentierten `isLossDanger(signals)` mit fester Priorität
+  (≥3 Presser → Nahkontakt+dirty → sharp+dirty →
+  sharp+imprecise+Presser → closed+dirty+Presser). Semantik unverändert.
+- `evaluate()` bleibt linear lesbar: Signale sammeln → loss-danger prüfen →
+  risky/pressure/open herleiten.
+
+**Vorher: Track A – Stance wirkt in `evaluate`** (2026-04-13)
+
+- `Scene.stancePlan: Stance` als didaktischer Vorab-Wert. Reducer-Action
+  `setStancePlan`, `reset`/`setVariant` erhalten den Plan, Persistenz-Schema
+  erweitert.
+- Neue `StancePicker`-Pill-Toggle („offen" / „geschlossen") im App-Header.
+- `evaluate`-Regeln:
+  - `closed + dirty + ≥ 1 Presser` ⇒ `loss-danger` (Empfänger dreht sich
+    blind in den Gegner rein).
+  - `open` entschärft analog zu `soft` einen reinen Ungenauigkeitsfehler
+    bei ≤ 1 Presser und nicht dirty – offene Stellung gibt Übersicht.
+
+**Vorher: Passschärfe in `evaluate` wirksam** (2026-04-13)
 
 - `sim/evaluate.ts` liest jetzt auch `scene.lastPass?.velocity`.
 - Neue Eskalationsregeln (beide direkt auf `loss-danger`):
@@ -157,7 +202,8 @@ zu konstruieren.
 
 **State (`src/state`)**
 - `sceneReducer` mit Actions `pass` (inkl. velocity/accuracy/firstTouch/stance),
-  `reset` und `setVariant`.
+  `reset`, `setVariant`, `setFirstTouchPlan`, `setPassVelocity`,
+  `setPassAccuracy`, `setStancePlan`.
 - `useScene` (React `useReducer`, Lazy-Init).
 - `persistence.ts`: `localStorage` unter Key `spielaufbau:scene:v1` mit
   Schema-Check (inkl. `variant`) und Fallback auf `createInitialScene()`.
@@ -169,11 +215,13 @@ zu konstruieren.
 - Pass per Klick/Tastatur auf Heimspieler.
 - Ring um Ballträger in allen vier Rating-Farben (`tokens.css`).
 - `RatingBadge` mit allen vier Varianten.
-- `VariantPicker`: Pill-Toggle „LIV eng" / „LIV breit" im Header.
-- `FirstTouchPicker`: Pill-Toggle „sauber" / „neutral" / „unsauber" im Header,
-  wirkt auf `simulatePassPreview` und den nächsten `pass`.
+- `VariantPicker`: Pill-Toggle „LIV eng" / „LIV breit" / „IV-Linie hoch".
+- `FirstTouchPicker`: Pill-Toggle „sauber" / „neutral" / „unsauber".
 - `PassVelocityPicker` / `PassAccuracyPicker`: Pill-Toggles für Passschärfe
   und -genauigkeit, wirken auf `scene.passPlan` und damit auf Preview/Pass.
+- `StancePicker`: Pill-Toggle „offen" / „geschlossen".
+- Alle fünf Picker teilen `RadioPillGroup` mit ARIA-radiogroup +
+  Pfeiltasten-Navigation (Roving tabindex).
 
 ---
 
@@ -182,9 +230,7 @@ zu konstruieren.
 1. **Formations- und Pressing-Höhen-Wahl**: weitere Systeme, andere Presshöhen.
 2. **Nebeneinanderstellung von Szenen**: zwei Varianten gleichzeitig rendern
    für direkten visuellen Vergleich.
-3. **Stance (`open`/`closed`) in `evaluate` einbinden**: aktuell wird die
-   Körperstellung des Empfängers erfasst, hat aber noch keine Rating-Wirkung.
-4. **Animationen** für Gegner-Verschiebung (bewusst spät).
+3. **Animationen** für Gegner-Verschiebung (bewusst spät).
 
 ---
 

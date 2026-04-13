@@ -1,6 +1,6 @@
 import type { PassAccuracy } from '@/domain';
 import { PASS_ACCURACIES, PASS_ACCURACY_LABELS } from '@/domain';
-import styles from './VariantPicker.module.css';
+import { RadioPillGroup } from './RadioPillGroup';
 
 type Props = {
   readonly value: PassAccuracy;
@@ -9,26 +9,12 @@ type Props = {
 
 export function PassAccuracyPicker({ value, onChange }: Props) {
   return (
-    <div
-      className={styles.group}
-      role="radiogroup"
-      aria-label="Passgenauigkeit"
-    >
-      {PASS_ACCURACIES.map((accuracy) => {
-        const isActive = accuracy === value;
-        return (
-          <button
-            key={accuracy}
-            type="button"
-            role="radio"
-            aria-checked={isActive}
-            className={`${styles.option} ${isActive ? styles.active : ''}`}
-            onClick={() => onChange(accuracy)}
-          >
-            {PASS_ACCURACY_LABELS[accuracy]}
-          </button>
-        );
-      })}
-    </div>
+    <RadioPillGroup
+      label="Passgenauigkeit"
+      options={PASS_ACCURACIES}
+      labels={PASS_ACCURACY_LABELS}
+      value={value}
+      onChange={onChange}
+    />
   );
 }

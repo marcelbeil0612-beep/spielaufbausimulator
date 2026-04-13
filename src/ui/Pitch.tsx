@@ -148,6 +148,7 @@ function HomeMarker({
           r={5}
         />
       ) : null}
+      <circle className={styles.focusRing} cx={cx} cy={cy} r={6.2} />
       <circle className={styles.playerHome} cx={cx} cy={cy} r={3.2} />
       <text className={styles.homeLabel} x={cx} y={cy}>
         {player.label}

@@ -64,6 +64,19 @@
   outline: none;
 }
 
+.focusRing {
+  fill: none;
+  stroke: var(--color-rating-open);
+  stroke-width: 0.4;
+  stroke-dasharray: 1 0.8;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.homeGroup:focus-visible .focusRing {
+  opacity: 1;
+}
+
 .previewRing {
   fill: none;
   stroke-width: 0.5;
