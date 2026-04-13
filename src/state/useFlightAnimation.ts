@@ -1,21 +1,23 @@
 import { useEffect } from 'react';
-import type { Scene } from '@/domain/scene';
-import type { SceneDispatch } from './useScene';
+import type { LanesState } from './lanes';
+import type { LanesDispatch } from './useLanes';
 
 /**
- * Treibt einen laufenden Ballflug über requestAnimationFrame voran.
- * Läuft nur, wenn `playing=true` und ein Flug aktiv ist; pausiert
- * automatisch, wenn der Flug endet oder `playing` abgeschaltet wird.
+ * Treibt laufende Ballflüge über requestAnimationFrame voran. Broadcasted
+ * `advanceTime(dt)` an alle Lanes gleichzeitig – Lanes ohne aktiven Flug
+ * sind in `sceneReducer` No-Ops. Pausiert automatisch, sobald keine Lane
+ * mehr einen Flug hat oder `playing` abgeschaltet wird.
  *
  * `speed` ist ein linearer Zeitfaktor (1 = Echtzeit, 0.5 = Slow-Motion).
  */
 export function useFlightAnimation(
-  scene: Scene,
-  dispatch: SceneDispatch,
+  state: LanesState,
+  dispatch: LanesDispatch,
   playing: boolean,
   speed: number,
 ): void {
-  const active = playing && scene.ballFlight !== null;
+  const anyFlight = state.lanes.some((l) => l.scene.ballFlight !== null);
+  const active = playing && anyFlight;
   useEffect(() => {
     if (!active) return;
     let rafId = 0;
@@ -23,7 +25,12 @@ export function useFlightAnimation(
     const tick = (now: number) => {
       const dt = ((now - last) / 1000) * speed;
       last = now;
-      if (dt > 0) dispatch({ type: 'advanceTime', dt });
+      if (dt > 0) {
+        dispatch({
+          type: 'broadcast',
+          action: { type: 'advanceTime', dt },
+        });
+      }
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);

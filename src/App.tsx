@@ -1,48 +1,29 @@
-import { useEffect, useState } from 'react';
-import { Pitch } from './ui/Pitch';
-import { RatingBadge } from './ui/RatingBadge';
-import { VariantPicker } from './ui/VariantPicker';
-import { FirstTouchPicker } from './ui/FirstTouchPicker';
-import { PassVelocityPicker } from './ui/PassVelocityPicker';
-import { PassAccuracyPicker } from './ui/PassAccuracyPicker';
-import { StancePicker } from './ui/StancePicker';
-import { OpponentPicker } from './ui/OpponentPicker';
-import { PressIntensityPicker } from './ui/PressIntensityPicker';
+import { useEffect, useMemo, useState } from 'react';
+import { Lane } from './ui/Lane';
 import { Timeline } from './ui/Timeline';
-import { useScene, useFlightAnimation } from './state';
-import { explainRating, linesBroken, simulatePassPreview } from './sim';
-import type { LineCount, Rating } from './sim';
-import { getLines } from '@/domain/lines';
+import { useLanes, useFlightAnimation } from './state';
+import type { SceneAction } from './state';
 import styles from './App.module.css';
 
 export function App() {
-  const { scene, dispatch } = useScene();
+  const { state, dispatch } = useLanes();
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(0.5);
-  useFlightAnimation(scene, dispatch, playing, speed);
-  useEffect(() => {
-    if (scene.ballFlight === null && !playing) setPlaying(true);
-  }, [scene.ballFlight, playing]);
+  useFlightAnimation(state, dispatch, playing, speed);
 
-  const evaluation = explainRating(scene);
-  const rating = evaluation.rating;
-  const holder = scene.home.players.find((p) => p.id === scene.ballHolderId);
-  const awayLines = getLines(scene.away);
-  const previewRatings: Record<string, Rating> = Object.fromEntries(
-    scene.home.players
-      .filter((p) => p.id !== scene.ballHolderId)
-      .map((p) => [p.id, simulatePassPreview(scene, p.id)]),
+  const activeLane =
+    state.lanes.find((l) => l.id === state.activeLaneId) ?? state.lanes[0]!;
+  const activeFlight = activeLane.scene.ballFlight;
+
+  useEffect(() => {
+    if (activeFlight === null && !playing) setPlaying(true);
+  }, [activeFlight, playing]);
+
+  const laneDispatch = useMemo(
+    () => (action: SceneAction) =>
+      dispatch({ type: 'lane', laneId: activeLane.id, action }),
+    [dispatch, activeLane.id],
   );
-  const previewLines: Record<string, LineCount> = holder
-    ? Object.fromEntries(
-        scene.home.players
-          .filter((p) => p.id !== scene.ballHolderId)
-          .map((p) => [
-            p.id,
-            linesBroken(holder.position.y, p.position.y, awayLines, 'home'),
-          ]),
-      )
-    : {};
 
   return (
     <main className={styles.app}>
@@ -54,90 +35,20 @@ export function App() {
         </p>
       </header>
 
-      <section className={styles.controls}>
-        <div className={styles.pickers}>
-          <VariantPicker
-            value={scene.variant}
-            onChange={(variant) => dispatch({ type: 'setVariant', variant })}
-          />
-          <FirstTouchPicker
-            value={scene.firstTouchPlan}
-            onChange={(firstTouch) =>
-              dispatch({ type: 'setFirstTouchPlan', firstTouch })
-            }
-          />
-          <PassVelocityPicker
-            value={scene.passPlan.velocity}
-            onChange={(velocity) =>
-              dispatch({ type: 'setPassVelocity', velocity })
-            }
-          />
-          <PassAccuracyPicker
-            value={scene.passPlan.accuracy}
-            onChange={(accuracy) =>
-              dispatch({ type: 'setPassAccuracy', accuracy })
-            }
-          />
-          <StancePicker
-            value={scene.stancePlan}
-            onChange={(stance) =>
-              dispatch({ type: 'setStancePlan', stance })
-            }
-          />
-          <OpponentPicker
-            value={scene.away.formation}
-            onChange={(awayFormation) =>
-              dispatch({ type: 'setAwayFormation', awayFormation })
-            }
-          />
-          <PressIntensityPicker
-            value={scene.pressIntensity}
-            onChange={(pressIntensity) =>
-              dispatch({ type: 'setPressIntensity', pressIntensity })
-            }
-          />
-        </div>
-        <div className={styles.statusGroup}>
-          <div className={styles.ratingGroup}>
-            <RatingBadge rating={rating} />
-            <p className={styles.ratingReason}>{evaluation.reason}</p>
-          </div>
-          <button
-            className={styles.resetButton}
-            type="button"
-            onClick={() => dispatch({ type: 'reset' })}
-          >
-            Neu starten
-          </button>
-        </div>
-      </section>
-
       <Timeline
-        flight={scene.ballFlight}
+        flight={activeFlight}
         playing={playing}
         onTogglePlay={() => setPlaying((p) => !p)}
         onSeek={(progress) => {
           setPlaying(false);
-          dispatch({ type: 'seekFlight', progress });
+          laneDispatch({ type: 'seekFlight', progress });
         }}
-        onSkip={() => dispatch({ type: 'skipFlight' })}
+        onSkip={() => laneDispatch({ type: 'skipFlight' })}
         speed={speed}
         onSpeedChange={setSpeed}
       />
 
-      <section className={styles.stage}>
-        <Pitch
-          home={scene.home}
-          away={scene.away}
-          ballHolderId={scene.ballHolderId}
-          ballPos={scene.ballPos}
-          ballFlight={scene.ballFlight}
-          rating={rating}
-          previewRatings={previewRatings}
-          previewLines={previewLines}
-          onPass={(targetId) => dispatch({ type: 'pass', targetId })}
-        />
-      </section>
+      <Lane lane={activeLane} dispatch={laneDispatch} />
 
       <p className={styles.hint}>
         Wähle Startvariante, ersten Kontakt, Passschärfe und Passgenauigkeit –
