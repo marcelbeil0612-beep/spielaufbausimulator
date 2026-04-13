@@ -227,6 +227,30 @@
   fill: var(--color-rating-open);
 }
 
+.awayGroupEditable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.awayGroupEditable:active {
+  cursor: grabbing;
+}
+
+.moveGhost {
+  stroke: var(--color-text);
+  stroke-width: 0.35;
+  stroke-dasharray: 0.8 0.6;
+  opacity: 0.55;
+  fill: none;
+}
+
+.moveTarget {
+  fill: color-mix(in srgb, var(--color-text) 14%, transparent);
+  stroke: var(--color-text);
+  stroke-width: 0.3;
+  opacity: 0.75;
+}
+
 /* Pass-Pfeil (Hover/Focus) */
 .passArrowGroup {
   opacity: 0;

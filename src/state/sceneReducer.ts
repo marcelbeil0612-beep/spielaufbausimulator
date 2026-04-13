@@ -26,6 +26,11 @@ export type SceneAction =
       readonly targetPos: PitchCoord;
       readonly speed?: DribbleSpeed;
     }
+  | {
+      readonly type: 'movePlayer';
+      readonly playerId: string;
+      readonly position: PitchCoord;
+    }
   | { readonly type: 'advanceTime'; readonly dt: number }
   | { readonly type: 'seekFlight'; readonly progress: number }
   | { readonly type: 'skipFlight' }
@@ -108,6 +113,38 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         ballPos: holder.position,
         history: [...state.history, snapshotScene(state)],
       };
+    }
+    case 'movePlayer': {
+      if (state.ballFlight || state.dribble) return state;
+      const target = clampPitch(action.position);
+      const homeIdx = state.home.players.findIndex((p) => p.id === action.playerId);
+      if (homeIdx >= 0) {
+        const current = state.home.players[homeIdx]!.position;
+        if (current.x === target.x && current.y === target.y) return state;
+        const newPlayers = state.home.players.map((p, i) =>
+          i === homeIdx ? { ...p, position: target } : p,
+        );
+        return {
+          ...state,
+          home: { ...state.home, players: newPlayers },
+          ballPos: state.ballHolderId === action.playerId ? target : state.ballPos,
+          history: [...state.history, snapshotScene(state)],
+        };
+      }
+      const awayIdx = state.away.players.findIndex((p) => p.id === action.playerId);
+      if (awayIdx >= 0) {
+        const current = state.away.players[awayIdx]!.position;
+        if (current.x === target.x && current.y === target.y) return state;
+        const newPlayers = state.away.players.map((p, i) =>
+          i === awayIdx ? { ...p, position: target } : p,
+        );
+        return {
+          ...state,
+          away: { ...state.away, players: newPlayers },
+          history: [...state.history, snapshotScene(state)],
+        };
+      }
+      return state;
     }
     case 'advanceTime': {
       if (action.dt <= 0) return state;

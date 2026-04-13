@@ -446,6 +446,81 @@ describe('sceneReducer', () => {
     expect(finalHolder.position.y).toBeCloseTo(target.y, 5);
   });
 
+  it('movePlayer setzt einen Heimspieler auf die Zielposition und pusht Snapshot', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const target = { x: liv.position.x + 8, y: liv.position.y + 4 };
+    const next = sceneReducer(start, {
+      type: 'movePlayer',
+      playerId: liv.id,
+      position: target,
+    });
+    const moved = next.home.players.find((p) => p.id === liv.id)!;
+    expect(moved.position).toEqual(target);
+    expect(next.history).toHaveLength(1);
+  });
+
+  it('movePlayer am Ballhalter zieht den Ball mit', () => {
+    const start = createInitialScene();
+    const holder = start.home.players.find((p) => p.id === start.ballHolderId)!;
+    const target = { x: holder.position.x + 5, y: holder.position.y + 5 };
+    const next = sceneReducer(start, {
+      type: 'movePlayer',
+      playerId: holder.id,
+      position: target,
+    });
+    expect(next.ballPos).toEqual(target);
+  });
+
+  it('movePlayer verschiebt auch Auswärtsspieler', () => {
+    const start = createInitialScene();
+    const awayPlayer = start.away.players[0]!;
+    const target = { x: awayPlayer.position.x + 3, y: awayPlayer.position.y - 4 };
+    const next = sceneReducer(start, {
+      type: 'movePlayer',
+      playerId: awayPlayer.id,
+      position: target,
+    });
+    const moved = next.away.players.find((p) => p.id === awayPlayer.id)!;
+    expect(moved.position).toEqual(target);
+    expect(next.home.players).toEqual(start.home.players);
+  });
+
+  it('movePlayer mit identischer Position ist Referenz-identischer No-Op', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const next = sceneReducer(start, {
+      type: 'movePlayer',
+      playerId: liv.id,
+      position: liv.position,
+    });
+    expect(next).toBe(start);
+  });
+
+  it('movePlayer ist während laufender Animation unwirksam', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const next = sceneReducer(flying, {
+      type: 'movePlayer',
+      playerId: liv.id,
+      position: { x: 50, y: 50 },
+    });
+    expect(next).toBe(flying);
+  });
+
+  it('movePlayer clamped die Position aufs Feld', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const next = sceneReducer(start, {
+      type: 'movePlayer',
+      playerId: liv.id,
+      position: { x: 150, y: -20 },
+    });
+    const moved = next.home.players.find((p) => p.id === liv.id)!;
+    expect(moved.position).toEqual({ x: 100, y: 0 });
+  });
+
   it('undo stellt den Zustand vor einem Dribbling wieder her', () => {
     const start = createInitialScene();
     const holder = start.home.players.find((p) => p.id === start.ballHolderId)!;

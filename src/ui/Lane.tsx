@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pitch } from './Pitch';
 import { RatingBadge } from './RatingBadge';
 import { VariantPicker } from './VariantPicker';
@@ -29,6 +30,8 @@ type Props = {
  */
 export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) {
   const { scene } = lane;
+  const [editMode, setEditMode] = useState(false);
+  const animating = scene.ballFlight !== null || scene.dribble !== null;
   const evaluation = explainRating(scene);
   const rating = evaluation.rating;
   const holder = scene.home.players.find((p) => p.id === scene.ballHolderId);
@@ -49,7 +52,11 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
       )
     : {};
 
-  const laneClasses = [styles.lane, isActive ? styles.laneActive : '']
+  const laneClasses = [
+    styles.lane,
+    isActive ? styles.laneActive : '',
+    editMode ? styles.laneEdit : '',
+  ]
     .filter(Boolean)
     .join(' ');
 
@@ -120,6 +127,20 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
             <p className={styles.ratingReason}>{evaluation.reason}</p>
           </div>
           <button
+            className={`${styles.resetButton} ${editMode ? styles.editButtonActive : ''}`}
+            type="button"
+            onClick={() => setEditMode((v) => !v)}
+            disabled={animating}
+            aria-pressed={editMode}
+            aria-label={
+              editMode
+                ? 'Formations-Editor beenden'
+                : 'Formations-Editor starten'
+            }
+          >
+            {editMode ? '✓ Fertig' : '🖊 Positionen'}
+          </button>
+          <button
             className={styles.resetButton}
             type="button"
             onClick={() => dispatch({ type: 'undo' })}
@@ -149,8 +170,12 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
           rating={rating}
           previewRatings={previewRatings}
           previewLines={previewLines}
+          editMode={editMode}
           onPass={(targetId) => dispatch({ type: 'pass', targetId })}
           onDribble={(targetPos) => dispatch({ type: 'dribble', targetPos })}
+          onMovePlayer={(playerId, position) =>
+            dispatch({ type: 'movePlayer', playerId, position })
+          }
           idPrefix={`${lane.id}-`}
         />
       </section>

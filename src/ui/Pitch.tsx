@@ -18,6 +18,8 @@ type Props = {
   readonly previewLines: Readonly<Record<string, LineCount>>;
   readonly onPass: (targetId: string) => void;
   readonly onDribble: (targetPos: PitchCoord) => void;
+  readonly onMovePlayer: (playerId: string, position: PitchCoord) => void;
+  readonly editMode: boolean;
   /**
    * Präfix für SVG-interne IDs (z. B. `<marker>`-Pfeilspitzen), damit
    * mehrere Pitches parallel im Dokument nicht um dieselben IDs kämpfen.
@@ -26,8 +28,12 @@ type Props = {
   readonly idPrefix?: string;
 };
 
+type DragKind = 'dribble' | 'move';
+
 type DragState = {
   readonly pointerId: number;
+  readonly playerId: string;
+  readonly kind: DragKind;
   readonly start: PitchCoord;
   readonly current: PitchCoord;
 };
@@ -44,6 +50,8 @@ export function Pitch({
   previewLines,
   onPass,
   onDribble,
+  onMovePlayer,
+  editMode,
   idPrefix = '',
 }: Props) {
   const holder =
@@ -75,18 +83,24 @@ export function Pitch({
 
   const animating = ballFlight !== null || dribble !== null;
 
-  const handleHolderPointerDown = (event: React.PointerEvent<SVGElement>) => {
-    if (animating) return;
-    if (!holder) return;
-    const world = svgToWorld(event.clientX, event.clientY);
-    if (!world) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setDrag({
-      pointerId: event.pointerId,
-      start: holder.position,
-      current: world,
-    });
-  };
+  const handlePlayerPointerDown = (
+    playerId: string,
+    origin: PitchCoord,
+    kind: DragKind,
+  ) =>
+    (event: React.PointerEvent<SVGElement>) => {
+      if (animating) return;
+      const world = svgToWorld(event.clientX, event.clientY);
+      if (!world) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setDrag({
+        pointerId: event.pointerId,
+        playerId,
+        kind,
+        start: origin,
+        current: world,
+      });
+    };
 
   const handlePointerMove = (event: React.PointerEvent<SVGElement>) => {
     if (!drag || drag.pointerId !== event.pointerId) return;
@@ -98,11 +112,17 @@ export function Pitch({
   const finishDrag = (event: React.PointerEvent<SVGElement>) => {
     if (!drag || drag.pointerId !== event.pointerId) return;
     const world = svgToWorld(event.clientX, event.clientY);
+    const captured = drag;
     setDrag(null);
     if (!world) return;
-    const dx = world.x - drag.start.x;
-    const dy = world.y - drag.start.y;
+    const dx = world.x - captured.start.x;
+    const dy = world.y - captured.start.y;
     const dist = Math.hypot(dx, dy);
+    if (captured.kind === 'move') {
+      if (dist < 0.5) return;
+      onMovePlayer(captured.playerId, world);
+      return;
+    }
     if (dist < 2) return;
     onDribble(world);
   };
@@ -132,33 +152,60 @@ export function Pitch({
         <PitchLines />
 
         {away.players.map((player) => (
-          <AwayMarker key={player.id} player={player} />
-        ))}
-
-        {home.players.map((player) => (
-          <HomeMarker
+          <AwayMarker
             key={player.id}
             player={player}
-            isHolder={player.id === ballHolderId}
-            rating={rating}
-            previewRating={previewRatings[player.id]}
-            previewLineCount={previewLines[player.id]}
-            holderSvg={holderSvg}
-            onPass={onPass}
-            onHolderPointerDown={handleHolderPointerDown}
-            draggable={!animating}
-            idPrefix={idPrefix}
+            editMode={editMode && !animating}
+            onEditPointerDown={handlePlayerPointerDown(
+              player.id,
+              player.position,
+              'move',
+            )}
           />
         ))}
+
+        {home.players.map((player) => {
+          const isHolder = player.id === ballHolderId;
+          const holderDragKind: DragKind = editMode ? 'move' : 'dribble';
+          return (
+            <HomeMarker
+              key={player.id}
+              player={player}
+              isHolder={isHolder}
+              rating={rating}
+              previewRating={previewRatings[player.id]}
+              previewLineCount={previewLines[player.id]}
+              holderSvg={holderSvg}
+              editMode={editMode}
+              onPass={onPass}
+              onHolderPointerDown={handlePlayerPointerDown(
+                player.id,
+                player.position,
+                holderDragKind,
+              )}
+              onEditPointerDown={handlePlayerPointerDown(
+                player.id,
+                player.position,
+                'move',
+              )}
+              draggable={!animating}
+              idPrefix={idPrefix}
+            />
+          );
+        })}
 
         {ballFlight ? <FlightTrail flight={ballFlight} current={ballSvg} /> : null}
         {dribble ? <DribbleTrail dribble={dribble} current={ballSvg} /> : null}
         {drag ? (
-          <DribbleGhost
-            from={drag.start}
-            to={drag.current}
-            idPrefix={idPrefix}
-          />
+          drag.kind === 'dribble' ? (
+            <DribbleGhost
+              from={drag.start}
+              to={drag.current}
+              idPrefix={idPrefix}
+            />
+          ) : (
+            <MoveGhost from={drag.start} to={drag.current} />
+          )
         ) : null}
         <Ball position={ballSvg} nudged={ballFlight === null && dribble === null} />
       </svg>
@@ -224,6 +271,29 @@ function DribbleTrail({
   );
 }
 
+function MoveGhost({
+  from,
+  to,
+}: {
+  readonly from: PitchCoord;
+  readonly to: PitchCoord;
+}) {
+  const f = toSvgCoord(from);
+  const t = toSvgCoord(to);
+  return (
+    <g className={styles.dribbleGhostGroup} pointerEvents="none">
+      <line
+        className={styles.moveGhost}
+        x1={f.cx}
+        y1={f.cy}
+        x2={t.cx}
+        y2={t.cy}
+      />
+      <circle className={styles.moveTarget} cx={t.cx} cy={t.cy} r={2.4} />
+    </g>
+  );
+}
+
 function DribbleGhost({
   from,
   to,
@@ -278,10 +348,30 @@ function ArrowheadMarker({ id, cls }: { readonly id: string; readonly cls: strin
   );
 }
 
-function AwayMarker({ player }: { readonly player: Player }) {
+function AwayMarker({
+  player,
+  editMode,
+  onEditPointerDown,
+}: {
+  readonly player: Player;
+  readonly editMode: boolean;
+  readonly onEditPointerDown: (event: React.PointerEvent<SVGElement>) => void;
+}) {
   const { cx, cy } = toSvgCoord(player.position);
+  const handler = editMode
+    ? (event: React.PointerEvent<SVGElement>) => {
+        event.stopPropagation();
+        onEditPointerDown(event);
+      }
+    : undefined;
   return (
-    <g>
+    <g
+      className={editMode ? styles.awayGroupEditable : undefined}
+      aria-label={
+        editMode ? `${player.label} verschieben` : player.label
+      }
+      onPointerDown={handler}
+    >
       <circle className={styles.playerAway} cx={cx} cy={cy} r={3.2} />
       <text className={styles.awayLabel} x={cx} y={cy}>
         {player.label}
@@ -297,8 +387,10 @@ type HomeMarkerProps = {
   readonly previewRating: Rating | undefined;
   readonly previewLineCount: LineCount | undefined;
   readonly holderSvg: { cx: number; cy: number } | undefined;
+  readonly editMode: boolean;
   readonly onPass: (targetId: string) => void;
   readonly onHolderPointerDown: (event: React.PointerEvent<SVGElement>) => void;
+  readonly onEditPointerDown: (event: React.PointerEvent<SVGElement>) => void;
   readonly draggable: boolean;
   readonly idPrefix: string;
 };
@@ -338,8 +430,10 @@ function HomeMarker({
   previewRating,
   previewLineCount,
   holderSvg,
+  editMode,
   onPass,
   onHolderPointerDown,
+  onEditPointerDown,
   draggable,
   idPrefix,
 }: HomeMarkerProps) {
@@ -360,9 +454,11 @@ function HomeMarker({
           onHolderPointerDown(event);
         }
       : undefined;
-    const ariaLabel = draggable
-      ? `${player.label} (Ballhalter, ziehen zum Dribbeln)`
-      : `${player.label} (Ballhalter)`;
+    const ariaLabel = editMode
+      ? `${player.label} (Ballhalter, ziehen zum Verschieben)`
+      : draggable
+        ? `${player.label} (Ballhalter, ziehen zum Dribbeln)`
+        : `${player.label} (Ballhalter)`;
     return (
       <g
         className={`${styles.holderGroup} ${draggable ? styles.holderDraggable : ''}`}
@@ -370,6 +466,27 @@ function HomeMarker({
         onPointerDown={handlePointerDown}
       >
         <circle className={ringClass} cx={cx} cy={cy} r={5} />
+        <circle className={styles.playerHome} cx={cx} cy={cy} r={3.2} />
+        <text className={styles.homeLabel} x={cx} y={cy}>
+          {player.label}
+        </text>
+      </g>
+    );
+  }
+
+  if (editMode) {
+    const handleEditPointerDown = draggable
+      ? (event: React.PointerEvent<SVGElement>) => {
+          event.stopPropagation();
+          onEditPointerDown(event);
+        }
+      : undefined;
+    return (
+      <g
+        className={`${styles.homeGroup} ${styles.holderDraggable}`}
+        aria-label={`${player.label} verschieben`}
+        onPointerDown={handleEditPointerDown}
+      >
         <circle className={styles.playerHome} cx={cx} cy={cy} r={3.2} />
         <text className={styles.homeLabel} x={cx} y={cy}>
           {player.label}
