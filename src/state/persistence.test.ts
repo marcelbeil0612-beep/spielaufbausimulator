@@ -110,4 +110,12 @@ describe('persistence', () => {
     const scene = loadScene(storage);
     expect(scene.history).toEqual([]);
   });
+
+  it('Szene ohne dribble-Feld wird auf null migriert', () => {
+    const legacy = { ...createInitialScene() } as Record<string, unknown>;
+    delete legacy['dribble'];
+    storage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+    const scene = loadScene(storage);
+    expect(scene.dribble).toBeNull();
+  });
 });

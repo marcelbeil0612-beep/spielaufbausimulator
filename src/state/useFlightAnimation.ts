@@ -3,10 +3,11 @@ import type { LanesState } from './lanes';
 import type { LanesDispatch } from './useLanes';
 
 /**
- * Treibt laufende Ballflüge über requestAnimationFrame voran. Broadcasted
- * `advanceTime(dt)` an alle Lanes gleichzeitig – Lanes ohne aktiven Flug
- * sind in `sceneReducer` No-Ops. Pausiert automatisch, sobald keine Lane
- * mehr einen Flug hat oder `playing` abgeschaltet wird.
+ * Treibt laufende Ballflüge und Dribblings über requestAnimationFrame
+ * voran. Broadcasted `advanceTime(dt)` an alle Lanes gleichzeitig – Lanes
+ * ohne aktive Animation sind in `sceneReducer` No-Ops. Pausiert automatisch,
+ * sobald keine Lane mehr eine laufende Animation hat oder `playing`
+ * abgeschaltet wird.
  *
  * `speed` ist ein linearer Zeitfaktor (1 = Echtzeit, 0.5 = Slow-Motion).
  */
@@ -16,8 +17,10 @@ export function useFlightAnimation(
   playing: boolean,
   speed: number,
 ): void {
-  const anyFlight = state.lanes.some((l) => l.scene.ballFlight !== null);
-  const active = playing && anyFlight;
+  const anyAnim = state.lanes.some(
+    (l) => l.scene.ballFlight !== null || l.scene.dribble !== null,
+  );
+  const active = playing && anyAnim;
   useEffect(() => {
     if (!active) return;
     let rafId = 0;

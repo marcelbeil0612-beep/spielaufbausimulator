@@ -145,10 +145,12 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
           ballHolderId={scene.ballHolderId}
           ballPos={scene.ballPos}
           ballFlight={scene.ballFlight}
+          dribble={scene.dribble}
           rating={rating}
           previewRatings={previewRatings}
           previewLines={previewLines}
           onPass={(targetId) => dispatch({ type: 'pass', targetId })}
+          onDribble={(targetPos) => dispatch({ type: 'dribble', targetPos })}
           idPrefix={`${lane.id}-`}
         />
       </section>

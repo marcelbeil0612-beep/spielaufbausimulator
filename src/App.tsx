@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Lane } from './ui/Lane';
 import { Timeline } from './ui/Timeline';
+import type { AnimationState } from './ui/Timeline';
 import { useLanes, useFlightAnimation } from './state';
 import type { SceneAction } from './state';
 import styles from './App.module.css';
@@ -13,11 +14,27 @@ export function App() {
 
   const activeLane =
     state.lanes.find((l) => l.id === state.activeLaneId) ?? state.lanes[0]!;
-  const activeFlight = activeLane.scene.ballFlight;
+  const activeAnim: AnimationState | null = useMemo(() => {
+    if (activeLane.scene.ballFlight) {
+      return {
+        kind: 'flight',
+        elapsed: activeLane.scene.ballFlight.elapsed,
+        duration: activeLane.scene.ballFlight.duration,
+      };
+    }
+    if (activeLane.scene.dribble) {
+      return {
+        kind: 'dribble',
+        elapsed: activeLane.scene.dribble.elapsed,
+        duration: activeLane.scene.dribble.duration,
+      };
+    }
+    return null;
+  }, [activeLane.scene.ballFlight, activeLane.scene.dribble]);
 
   useEffect(() => {
-    if (activeFlight === null && !playing) setPlaying(true);
-  }, [activeFlight, playing]);
+    if (activeAnim === null && !playing) setPlaying(true);
+  }, [activeAnim, playing]);
 
   const canRemove = state.lanes.length > 1;
   const laneCount = state.lanes.length;
@@ -33,7 +50,7 @@ export function App() {
       </header>
 
       <Timeline
-        flight={activeFlight}
+        animation={activeAnim}
         playing={playing}
         onTogglePlay={() => setPlaying((p) => !p)}
         onSeek={(progress) => {
@@ -99,10 +116,12 @@ export function App() {
 
       <p className={styles.hint}>
         Wähle Startvariante, ersten Kontakt, Passschärfe und Passgenauigkeit –
-        tippe dann einen Mitspieler, um zu passen. Der Ball fliegt in Echtzeit
-        (verlangsamt) – Gegner verschieben nur so weit, wie sie in der Flugzeit
-        schaffen. Timeline steuert die aktive Lane; Play gilt für alle Lanes
-        synchron, damit man den Unterschied im selben Moment sieht.
+        tippe dann einen Mitspieler, um zu passen, oder ziehe den Ballhalter
+        auf eine freie Fläche, um zu dribbeln. Der Ball fliegt bzw. der Dribbler
+        läuft in Echtzeit (verlangsamt) – Gegner verschieben nur so weit, wie
+        sie in der Dauer schaffen. Timeline steuert die aktive Lane; Play gilt
+        für alle Lanes synchron, damit man den Unterschied im selben Moment
+        sieht.
       </p>
     </main>
   );

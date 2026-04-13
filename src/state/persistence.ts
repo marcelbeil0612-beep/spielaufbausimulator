@@ -81,6 +81,7 @@ function migrate(scene: Scene): Scene {
     pressIntensity: scene.pressIntensity ?? DEFAULT_PRESS_INTENSITY,
     ballPos: scene.ballPos ?? fallbackBallPos,
     ballFlight: scene.ballFlight ?? null,
+    dribble: scene.dribble ?? null,
     history: Array.isArray(scene.history) ? scene.history : [],
   };
   return next;

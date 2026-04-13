@@ -111,6 +111,15 @@
   cursor: default;
 }
 
+.holderDraggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.holderDraggable:active {
+  cursor: grabbing;
+}
+
 /* Gastteam */
 .playerAway {
   fill: var(--color-away);
@@ -178,6 +187,44 @@
   stroke-linecap: round;
   opacity: 0.85;
   fill: none;
+}
+
+.dribbleLane {
+  stroke: var(--color-rating-open);
+  stroke-width: 0.25;
+  opacity: 0.28;
+  stroke-dasharray: 0.8 0.8;
+  fill: none;
+}
+
+.dribbleTrail {
+  stroke: var(--color-rating-open);
+  stroke-width: 0.55;
+  stroke-linecap: round;
+  opacity: 0.8;
+  fill: none;
+}
+
+.dribbleGhostGroup {
+  opacity: 0.9;
+}
+
+.dribbleGhost {
+  stroke: var(--color-rating-open);
+  stroke-width: 0.55;
+  stroke-dasharray: 1.2 0.8;
+  fill: none;
+}
+
+.dribbleTarget {
+  fill: color-mix(in srgb, var(--color-rating-open) 25%, transparent);
+  stroke: var(--color-rating-open);
+  stroke-width: 0.35;
+}
+
+.arrowDribble {
+  stroke: var(--color-rating-open);
+  fill: var(--color-rating-open);
 }
 
 /* Pass-Pfeil (Hover/Focus) */

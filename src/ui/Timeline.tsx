@@ -1,8 +1,13 @@
-import type { BallFlight } from '@/domain/ballFlight';
 import styles from './Timeline.module.css';
 
+export type AnimationState = {
+  readonly kind: 'flight' | 'dribble';
+  readonly elapsed: number;
+  readonly duration: number;
+};
+
 type Props = {
-  readonly flight: BallFlight | null;
+  readonly animation: AnimationState | null;
   readonly playing: boolean;
   readonly onTogglePlay: () => void;
   readonly onSeek: (progress: number) => void;
@@ -13,8 +18,13 @@ type Props = {
 
 const SPEEDS: readonly number[] = [0.25, 0.5, 1];
 
+const LABELS: Record<AnimationState['kind'], string> = {
+  flight: 'Flug',
+  dribble: 'Dribbling',
+};
+
 export function Timeline({
-  flight,
+  animation,
   playing,
   onTogglePlay,
   onSeek,
@@ -22,23 +32,24 @@ export function Timeline({
   speed,
   onSpeedChange,
 }: Props) {
-  const hasFlight = flight !== null;
-  const progress = flight && flight.duration > 0
-    ? flight.elapsed / flight.duration
-    : hasFlight ? 1 : 0;
-  const clock = flight
-    ? `${flight.elapsed.toFixed(2)} / ${flight.duration.toFixed(2)} s`
+  const hasAnim = animation !== null;
+  const progress = animation && animation.duration > 0
+    ? animation.elapsed / animation.duration
+    : hasAnim ? 1 : 0;
+  const clock = animation
+    ? `${animation.elapsed.toFixed(2)} / ${animation.duration.toFixed(2)} s`
     : '—';
+  const label = animation ? LABELS[animation.kind] : 'Animation';
 
   return (
-    <section className={styles.timeline} aria-label="Ballflug-Zeitachse">
-      <span className={styles.label}>Flug</span>
+    <section className={styles.timeline} aria-label="Animations-Zeitachse">
+      <span className={styles.label}>{label}</span>
       <div className={styles.buttons}>
         <button
           type="button"
           className={styles.button}
           onClick={onTogglePlay}
-          disabled={!hasFlight}
+          disabled={!hasAnim}
           aria-label={playing ? 'Pause' : 'Abspielen'}
         >
           {playing ? '⏸' : '▶'}
@@ -47,8 +58,8 @@ export function Timeline({
           type="button"
           className={styles.button}
           onClick={onSkip}
-          disabled={!hasFlight}
-          aria-label="Direkt ans Flugende springen"
+          disabled={!hasAnim}
+          aria-label="Direkt ans Animationsende springen"
         >
           ⏭
         </button>
@@ -60,9 +71,9 @@ export function Timeline({
         max={1}
         step={0.001}
         value={progress}
-        disabled={!hasFlight}
+        disabled={!hasAnim}
         onChange={(event) => onSeek(Number(event.target.value))}
-        aria-label="Ballflug-Fortschritt"
+        aria-label="Animations-Fortschritt"
       />
       <span className={styles.clock}>{clock}</span>
       <div className={styles.speed} role="group" aria-label="Abspielgeschwindigkeit">

@@ -1,5 +1,7 @@
+import { useCallback, useRef, useState } from 'react';
 import type { PitchCoord, Player, Team } from '@/domain/types';
 import type { BallFlight } from '@/domain/ballFlight';
+import type { Dribble } from '@/domain/dribble';
 import type { LineCount, Rating } from '@/sim';
 import { PITCH_SVG_HEIGHT, PITCH_SVG_WIDTH, toSvgCoord } from './pitchGeometry';
 import styles from './Pitch.module.css';
@@ -10,10 +12,12 @@ type Props = {
   readonly ballHolderId: string;
   readonly ballPos: PitchCoord;
   readonly ballFlight: BallFlight | null;
+  readonly dribble: Dribble | null;
   readonly rating: Rating;
   readonly previewRatings: Readonly<Record<string, Rating>>;
   readonly previewLines: Readonly<Record<string, LineCount>>;
   readonly onPass: (targetId: string) => void;
+  readonly onDribble: (targetPos: PitchCoord) => void;
   /**
    * Präfix für SVG-interne IDs (z. B. `<marker>`-Pfeilspitzen), damit
    * mehrere Pitches parallel im Dokument nicht um dieselben IDs kämpfen.
@@ -22,16 +26,24 @@ type Props = {
   readonly idPrefix?: string;
 };
 
+type DragState = {
+  readonly pointerId: number;
+  readonly start: PitchCoord;
+  readonly current: PitchCoord;
+};
+
 export function Pitch({
   home,
   away,
   ballHolderId,
   ballPos,
   ballFlight,
+  dribble,
   rating,
   previewRatings,
   previewLines,
   onPass,
+  onDribble,
   idPrefix = '',
 }: Props) {
   const holder =
@@ -40,19 +52,81 @@ export function Pitch({
   const holderSvg = holder ? toSvgCoord(holder.position) : undefined;
   const ballSvg = toSvgCoord(ballPos);
 
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
+
+  const svgToWorld = useCallback(
+    (clientX: number, clientY: number): PitchCoord | null => {
+      const svg = svgRef.current;
+      if (!svg) return null;
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return null;
+      const pt = svg.createSVGPoint();
+      pt.x = clientX;
+      pt.y = clientY;
+      const local = pt.matrixTransform(ctm.inverse());
+      return {
+        x: (local.x / PITCH_SVG_WIDTH) * 100,
+        y: ((PITCH_SVG_HEIGHT - local.y) / PITCH_SVG_HEIGHT) * 100,
+      };
+    },
+    [],
+  );
+
+  const animating = ballFlight !== null || dribble !== null;
+
+  const handleHolderPointerDown = (event: React.PointerEvent<SVGElement>) => {
+    if (animating) return;
+    if (!holder) return;
+    const world = svgToWorld(event.clientX, event.clientY);
+    if (!world) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag({
+      pointerId: event.pointerId,
+      start: holder.position,
+      current: world,
+    });
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<SVGElement>) => {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const world = svgToWorld(event.clientX, event.clientY);
+    if (!world) return;
+    setDrag({ ...drag, current: world });
+  };
+
+  const finishDrag = (event: React.PointerEvent<SVGElement>) => {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const world = svgToWorld(event.clientX, event.clientY);
+    setDrag(null);
+    if (!world) return;
+    const dx = world.x - drag.start.x;
+    const dy = world.y - drag.start.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 2) return;
+    onDribble(world);
+  };
+
   return (
     <div className={styles.wrapper}>
       <svg
+        ref={svgRef}
         className={styles.svg}
         viewBox={`0 0 ${PITCH_SVG_WIDTH} ${PITCH_SVG_HEIGHT}`}
         role="img"
         aria-label="Taktikboard · 4-3-3 gegen 4-4-2 hohes Pressing"
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishDrag}
+        onPointerCancel={(event) => {
+          if (drag && drag.pointerId === event.pointerId) setDrag(null);
+        }}
       >
         <defs>
           <ArrowheadMarker id={`${idPrefix}arrow-open`} cls={styles.arrowOpen} />
           <ArrowheadMarker id={`${idPrefix}arrow-pressure`} cls={styles.arrowPressure} />
           <ArrowheadMarker id={`${idPrefix}arrow-risky`} cls={styles.arrowRisky} />
           <ArrowheadMarker id={`${idPrefix}arrow-loss`} cls={styles.arrowLoss} />
+          <ArrowheadMarker id={`${idPrefix}arrow-dribble`} cls={styles.arrowDribble} />
         </defs>
 
         <PitchLines />
@@ -71,12 +145,22 @@ export function Pitch({
             previewLineCount={previewLines[player.id]}
             holderSvg={holderSvg}
             onPass={onPass}
+            onHolderPointerDown={handleHolderPointerDown}
+            draggable={!animating}
             idPrefix={idPrefix}
           />
         ))}
 
         {ballFlight ? <FlightTrail flight={ballFlight} current={ballSvg} /> : null}
-        <Ball position={ballSvg} nudged={ballFlight === null} />
+        {dribble ? <DribbleTrail dribble={dribble} current={ballSvg} /> : null}
+        {drag ? (
+          <DribbleGhost
+            from={drag.start}
+            to={drag.current}
+            idPrefix={idPrefix}
+          />
+        ) : null}
+        <Ball position={ballSvg} nudged={ballFlight === null && dribble === null} />
       </svg>
     </div>
   );
@@ -107,6 +191,72 @@ function FlightTrail({
         x2={current.cx}
         y2={current.cy}
       />
+    </g>
+  );
+}
+
+function DribbleTrail({
+  dribble,
+  current,
+}: {
+  readonly dribble: Dribble;
+  readonly current: { cx: number; cy: number };
+}) {
+  const from = toSvgCoord(dribble.start);
+  const to = toSvgCoord(dribble.end);
+  return (
+    <g className={styles.flightGroup}>
+      <line
+        className={styles.dribbleLane}
+        x1={from.cx}
+        y1={from.cy}
+        x2={to.cx}
+        y2={to.cy}
+      />
+      <line
+        className={styles.dribbleTrail}
+        x1={from.cx}
+        y1={from.cy}
+        x2={current.cx}
+        y2={current.cy}
+      />
+    </g>
+  );
+}
+
+function DribbleGhost({
+  from,
+  to,
+  idPrefix,
+}: {
+  readonly from: PitchCoord;
+  readonly to: PitchCoord;
+  readonly idPrefix: string;
+}) {
+  const f = toSvgCoord(from);
+  const t = toSvgCoord(to);
+  const dx = t.cx - f.cx;
+  const dy = t.cy - f.cy;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.5) return null;
+  const nx = dx / len;
+  const ny = dy / len;
+  const inset = 4.2;
+  const x1 = f.cx + nx * inset;
+  const y1 = f.cy + ny * inset;
+  const x2 = t.cx;
+  const y2 = t.cy;
+  return (
+    <g className={styles.dribbleGhostGroup} pointerEvents="none">
+      <line
+        className={styles.dribbleGhost}
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        markerEnd={`url(#${idPrefix}arrow-dribble)`}
+      />
+      <circle className={styles.dribbleTarget} cx={t.cx} cy={t.cy} r={2.2} />
     </g>
   );
 }
@@ -148,6 +298,8 @@ type HomeMarkerProps = {
   readonly previewLineCount: LineCount | undefined;
   readonly holderSvg: { cx: number; cy: number } | undefined;
   readonly onPass: (targetId: string) => void;
+  readonly onHolderPointerDown: (event: React.PointerEvent<SVGElement>) => void;
+  readonly draggable: boolean;
   readonly idPrefix: string;
 };
 
@@ -187,6 +339,8 @@ function HomeMarker({
   previewLineCount,
   holderSvg,
   onPass,
+  onHolderPointerDown,
+  draggable,
   idPrefix,
 }: HomeMarkerProps) {
   const { cx, cy } = toSvgCoord(player.position);
@@ -200,8 +354,21 @@ function HomeMarker({
           : rating === 'risky'
             ? styles.ringRisky
             : styles.ringLoss;
+    const handlePointerDown = draggable
+      ? (event: React.PointerEvent<SVGElement>) => {
+          event.stopPropagation();
+          onHolderPointerDown(event);
+        }
+      : undefined;
+    const ariaLabel = draggable
+      ? `${player.label} (Ballhalter, ziehen zum Dribbeln)`
+      : `${player.label} (Ballhalter)`;
     return (
-      <g className={styles.holderGroup}>
+      <g
+        className={`${styles.holderGroup} ${draggable ? styles.holderDraggable : ''}`}
+        aria-label={ariaLabel}
+        onPointerDown={handlePointerDown}
+      >
         <circle className={ringClass} cx={cx} cy={cy} r={5} />
         <circle className={styles.playerHome} cx={cx} cy={cy} r={3.2} />
         <text className={styles.homeLabel} x={cx} y={cy}>

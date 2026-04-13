@@ -387,4 +387,75 @@ describe('sceneReducer', () => {
     const reset = sceneReducer(withHistory, { type: 'reset' });
     expect(reset.history).toEqual([]);
   });
+
+  it('dribble-Aktion startet ein Dribbling und pusht einen Snapshot', () => {
+    const start = createInitialScene();
+    const holder = start.home.players.find((p) => p.id === start.ballHolderId)!;
+    const target = { x: holder.position.x + 5, y: holder.position.y + 15 };
+    const next = sceneReducer(start, { type: 'dribble', targetPos: target });
+    expect(next.dribble).not.toBeNull();
+    expect(next.dribble!.playerId).toBe(holder.id);
+    expect(next.dribble!.start).toEqual(holder.position);
+    expect(next.dribble!.end).toEqual(target);
+    expect(next.history).toHaveLength(1);
+  });
+
+  it('dribble-Aktion ignoriert den Input bei laufendem Ballflug', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const next = sceneReducer(flying, {
+      type: 'dribble',
+      targetPos: { x: 50, y: 50 },
+    });
+    expect(next).toBe(flying);
+  });
+
+  it('advanceTime treibt ein Dribbling schrittweise voran', () => {
+    const start = createInitialScene();
+    const holder = start.home.players.find((p) => p.id === start.ballHolderId)!;
+    const dribbling = sceneReducer(start, {
+      type: 'dribble',
+      targetPos: { x: holder.position.x, y: holder.position.y + 20 },
+    });
+    const half = sceneReducer(dribbling, {
+      type: 'advanceTime',
+      dt: dribbling.dribble!.duration / 2,
+    });
+    expect(half.dribble).not.toBeNull();
+    expect(half.dribble!.elapsed).toBeCloseTo(
+      dribbling.dribble!.duration / 2,
+      5,
+    );
+    const midY = (holder.position.y + holder.position.y + 20) / 2;
+    expect(half.ballPos.y).toBeCloseTo(midY, 1);
+  });
+
+  it('skipFlight schließt auch ein Dribbling ab und setzt den Ballhalter auf das Ziel', () => {
+    const start = createInitialScene();
+    const holder = start.home.players.find((p) => p.id === start.ballHolderId)!;
+    const target = { x: holder.position.x + 2, y: holder.position.y + 25 };
+    const dribbling = sceneReducer(start, {
+      type: 'dribble',
+      targetPos: target,
+    });
+    const done = sceneReducer(dribbling, { type: 'skipFlight' });
+    expect(done.dribble).toBeNull();
+    const finalHolder = done.home.players.find((p) => p.id === holder.id)!;
+    expect(finalHolder.position.x).toBeCloseTo(target.x, 5);
+    expect(finalHolder.position.y).toBeCloseTo(target.y, 5);
+  });
+
+  it('undo stellt den Zustand vor einem Dribbling wieder her', () => {
+    const start = createInitialScene();
+    const holder = start.home.players.find((p) => p.id === start.ballHolderId)!;
+    const dribbling = sceneReducer(start, {
+      type: 'dribble',
+      targetPos: { x: holder.position.x + 3, y: holder.position.y + 15 },
+    });
+    const undone = sceneReducer(dribbling, { type: 'undo' });
+    expect(undone.dribble).toBeNull();
+    expect(undone.ballHolderId).toBe(start.ballHolderId);
+    expect(undone.history).toHaveLength(0);
+  });
 });

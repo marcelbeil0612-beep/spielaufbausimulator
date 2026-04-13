@@ -8,6 +8,7 @@ import { DEFAULT_START_VARIANT, applyStartVariant } from './startVariants';
 import type { PressIntensity } from './pressIntensity';
 import { DEFAULT_PRESS_INTENSITY } from './pressIntensity';
 import type { BallFlight } from './ballFlight';
+import type { Dribble } from './dribble';
 import { teamFromFormation } from './team';
 import { FORMATION_4_3_3, FORMATION_4_4_2 } from './formations';
 import { FORMATION_4_2_3_1 } from './formations/away_4231';
@@ -31,6 +32,7 @@ export type Scene = {
   readonly ballHolderId: string;
   readonly ballPos: PitchCoord;
   readonly ballFlight: BallFlight | null;
+  readonly dribble: Dribble | null;
   readonly phase: Phase;
   readonly variant: StartVariant;
   readonly firstTouchPlan: FirstTouch;
@@ -51,6 +53,7 @@ export function snapshotScene(scene: Scene): SceneSnapshot {
     ballHolderId: scene.ballHolderId,
     ballPos: scene.ballPos,
     ballFlight: scene.ballFlight,
+    dribble: scene.dribble,
     phase: scene.phase,
     variant: scene.variant,
     firstTouchPlan: scene.firstTouchPlan,
@@ -98,6 +101,7 @@ export function createInitialScene(
     ballHolderId: gk.id,
     ballPos: gk.position,
     ballFlight: null,
+    dribble: null,
     phase: 'buildUp',
     variant,
     firstTouchPlan,
