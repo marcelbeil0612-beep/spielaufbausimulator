@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Lane } from './ui/Lane';
+import { ScenarioPicker } from './ui/ScenarioPicker';
 import { Timeline } from './ui/Timeline';
 import type { AnimationState } from './ui/Timeline';
 import { useLanes, useFlightAnimation } from './state';
@@ -109,6 +110,15 @@ export function App() {
         >
           + Lane (Kopie der aktiven)
         </button>
+        <ScenarioPicker
+          onLoad={(scenarioId) =>
+            dispatch({
+              type: 'lane',
+              laneId: activeLane.id,
+              action: { type: 'loadScenario', scenarioId },
+            })
+          }
+        />
         <span className={styles.laneCount}>
           {laneCount === 1 ? '1 Lane' : `${laneCount} Lanes`}
         </span>

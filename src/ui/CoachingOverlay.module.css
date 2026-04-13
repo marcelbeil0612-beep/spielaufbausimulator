@@ -1,0 +1,53 @@
+.overlay {
+  opacity: 0.9;
+}
+
+.awayLineBand {
+  stroke: var(--color-away);
+  stroke-width: 0.3;
+  stroke-dasharray: 1.4 0.8;
+  opacity: 0.55;
+  fill: none;
+}
+
+.homeLineBand {
+  stroke: var(--color-home);
+  stroke-width: 0.3;
+  stroke-dasharray: 1.4 0.8;
+  opacity: 0.35;
+  fill: none;
+}
+
+.awayLineLabel {
+  fill: var(--color-away);
+  font-size: 1.8px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  text-anchor: end;
+  opacity: 0.7;
+}
+
+.homeLineLabel {
+  fill: var(--color-home-ink);
+  font-size: 1.8px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  text-anchor: end;
+  opacity: 0.55;
+}
+
+.pressureRadius {
+  stroke: var(--color-rating-risky);
+  stroke-width: 0.25;
+  stroke-dasharray: 0.8 0.6;
+  opacity: 0.6;
+  fill: color-mix(in srgb, var(--color-rating-risky) 3%, transparent);
+}
+
+.pressDistance {
+  stroke: var(--color-rating-pressure);
+  stroke-width: 0.25;
+  stroke-dasharray: 0.5 0.5;
+  opacity: 0.5;
+  fill: none;
+}

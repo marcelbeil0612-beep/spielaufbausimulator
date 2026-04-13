@@ -7,6 +7,7 @@ import type { PressIntensity } from '@/domain/pressIntensity';
 import type { BallFlight } from '@/domain/ballFlight';
 import type { Dribble, DribbleSpeed } from '@/domain/dribble';
 import { DEFAULT_DRIBBLE_SPEED, dribbleDuration } from '@/domain/dribble';
+import { findScenario } from '@/domain/scenarios';
 import type { FormationPattern, PitchCoord } from '@/domain/types';
 import { ballFlightTime } from '@/domain/physics';
 import { advanceFlight } from '@/sim/advanceFlight';
@@ -36,6 +37,7 @@ export type SceneAction =
   | { readonly type: 'skipFlight' }
   | { readonly type: 'undo' }
   | { readonly type: 'reset' }
+  | { readonly type: 'loadScenario'; readonly scenarioId: string }
   | { readonly type: 'setVariant'; readonly variant: StartVariant }
   | { readonly type: 'setFirstTouchPlan'; readonly firstTouch: FirstTouch }
   | { readonly type: 'setPassVelocity'; readonly velocity: PassVelocity }
@@ -179,6 +181,11 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         ...last,
         history: state.history.slice(0, -1),
       };
+    }
+    case 'loadScenario': {
+      const scenario = findScenario(action.scenarioId);
+      if (!scenario) return state;
+      return scenario.build();
     }
     case 'reset':
       return createInitialScene(

@@ -3,6 +3,7 @@ import type { PitchCoord, Player, Team } from '@/domain/types';
 import type { BallFlight } from '@/domain/ballFlight';
 import type { Dribble } from '@/domain/dribble';
 import type { LineCount, Rating } from '@/sim';
+import { CoachingOverlay } from './CoachingOverlay';
 import { PITCH_SVG_HEIGHT, PITCH_SVG_WIDTH, toSvgCoord } from './pitchGeometry';
 import styles from './Pitch.module.css';
 
@@ -20,6 +21,7 @@ type Props = {
   readonly onDribble: (targetPos: PitchCoord) => void;
   readonly onMovePlayer: (playerId: string, position: PitchCoord) => void;
   readonly editMode: boolean;
+  readonly coachingOverlay: boolean;
   /**
    * Präfix für SVG-interne IDs (z. B. `<marker>`-Pfeilspitzen), damit
    * mehrere Pitches parallel im Dokument nicht um dieselben IDs kämpfen.
@@ -52,6 +54,7 @@ export function Pitch({
   onDribble,
   onMovePlayer,
   editMode,
+  coachingOverlay,
   idPrefix = '',
 }: Props) {
   const holder =
@@ -150,6 +153,10 @@ export function Pitch({
         </defs>
 
         <PitchLines />
+
+        {coachingOverlay ? (
+          <CoachingOverlay home={home} away={away} ballHolderPos={ballPos} />
+        ) : null}
 
         {away.players.map((player) => (
           <AwayMarker

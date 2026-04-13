@@ -377,6 +377,24 @@ describe('sceneReducer', () => {
     expect(next).toBe(start);
   });
 
+  it('loadScenario ersetzt die Szene durch den Szenario-Build', () => {
+    const start = createInitialScene();
+    const next = sceneReducer(start, {
+      type: 'loadScenario',
+      scenarioId: 'back-five',
+    });
+    expect(next.away.formation).toBe('5-3-2');
+  });
+
+  it('loadScenario mit unbekannter id ist Referenz-identischer No-Op', () => {
+    const start = createInitialScene();
+    const next = sceneReducer(start, {
+      type: 'loadScenario',
+      scenarioId: 'no-such-scenario',
+    });
+    expect(next).toBe(start);
+  });
+
   it('reset löscht die History', () => {
     const start = createInitialScene();
     const liv = start.home.players.find((p) => p.role === 'LCB')!;

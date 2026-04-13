@@ -31,6 +31,7 @@ type Props = {
 export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) {
   const { scene } = lane;
   const [editMode, setEditMode] = useState(false);
+  const [coachingOverlay, setCoachingOverlay] = useState(false);
   const animating = scene.ballFlight !== null || scene.dribble !== null;
   const evaluation = explainRating(scene);
   const rating = evaluation.rating;
@@ -141,6 +142,19 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
             {editMode ? '✓ Fertig' : '🖊 Positionen'}
           </button>
           <button
+            className={`${styles.resetButton} ${coachingOverlay ? styles.editButtonActive : ''}`}
+            type="button"
+            onClick={() => setCoachingOverlay((v) => !v)}
+            aria-pressed={coachingOverlay}
+            aria-label={
+              coachingOverlay
+                ? 'Coaching-Overlay ausblenden'
+                : 'Coaching-Overlay einblenden'
+            }
+          >
+            {coachingOverlay ? '◎ Overlay an' : '◌ Overlay'}
+          </button>
+          <button
             className={styles.resetButton}
             type="button"
             onClick={() => dispatch({ type: 'undo' })}
@@ -171,6 +185,7 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
           previewRatings={previewRatings}
           previewLines={previewLines}
           editMode={editMode}
+          coachingOverlay={coachingOverlay}
           onPass={(targetId) => dispatch({ type: 'pass', targetId })}
           onDribble={(targetPos) => dispatch({ type: 'dribble', targetPos })}
           onMovePlayer={(playerId, position) =>
