@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pitch } from './ui/Pitch';
 import { RatingBadge } from './ui/RatingBadge';
 import { VariantPicker } from './ui/VariantPicker';
@@ -8,7 +8,8 @@ import { PassAccuracyPicker } from './ui/PassAccuracyPicker';
 import { StancePicker } from './ui/StancePicker';
 import { OpponentPicker } from './ui/OpponentPicker';
 import { PressIntensityPicker } from './ui/PressIntensityPicker';
-import { useScene } from './state';
+import { Timeline } from './ui/Timeline';
+import { useScene, useFlightAnimation } from './state';
 import { explainRating, linesBroken, simulatePassPreview } from './sim';
 import type { LineCount, Rating } from './sim';
 import { getLines } from '@/domain/lines';
@@ -16,9 +17,13 @@ import styles from './App.module.css';
 
 export function App() {
   const { scene, dispatch } = useScene();
+  const [playing, setPlaying] = useState(true);
+  const [speed, setSpeed] = useState(0.5);
+  useFlightAnimation(scene, dispatch, playing, speed);
   useEffect(() => {
-    if (scene.ballFlight) dispatch({ type: 'skipFlight' });
-  }, [scene.ballFlight, dispatch]);
+    if (scene.ballFlight === null && !playing) setPlaying(true);
+  }, [scene.ballFlight, playing]);
+
   const evaluation = explainRating(scene);
   const rating = evaluation.rating;
   const holder = scene.home.players.find((p) => p.id === scene.ballHolderId);
@@ -107,6 +112,19 @@ export function App() {
         </div>
       </section>
 
+      <Timeline
+        flight={scene.ballFlight}
+        playing={playing}
+        onTogglePlay={() => setPlaying((p) => !p)}
+        onSeek={(progress) => {
+          setPlaying(false);
+          dispatch({ type: 'seekFlight', progress });
+        }}
+        onSkip={() => dispatch({ type: 'skipFlight' })}
+        speed={speed}
+        onSpeedChange={setSpeed}
+      />
+
       <section className={styles.stage}>
         <Pitch
           home={scene.home}
@@ -123,10 +141,9 @@ export function App() {
 
       <p className={styles.hint}>
         Wähle Startvariante, ersten Kontakt, Passschärfe und Passgenauigkeit –
-        tippe dann einen Mitspieler, um zu passen. Der ballnahe Stürmer
-        reagiert, der Ring am Ballträger zeigt die Bewertung, der
-        Vorschau-Ring auf Hover/Fokus die hypothetische Bewertung vor dem
-        Klick.
+        tippe dann einen Mitspieler, um zu passen. Der Ball fliegt in Echtzeit
+        (verlangsamt) – Gegner verschieben nur so weit, wie sie in der Flugzeit
+        schaffen. Timeline zum Pausieren, Scrubben und Überspringen.
       </p>
     </main>
   );
