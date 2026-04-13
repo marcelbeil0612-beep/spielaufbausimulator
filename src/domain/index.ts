@@ -56,4 +56,4 @@ export {
   flightProgress,
   isFlightComplete,
 } from './ballFlight';
-export type { BallFlight } from './ballFlight';
+export type { BallFlight, BallFlightBaseline } from './ballFlight';

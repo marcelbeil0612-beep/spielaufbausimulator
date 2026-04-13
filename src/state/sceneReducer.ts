@@ -1,11 +1,13 @@
 import type { Scene } from '@/domain/scene';
-import { createInitialScene } from '@/domain/scene';
+import { createInitialScene, findPlayer } from '@/domain/scene';
 import type { PassAccuracy, PassOptions, PassVelocity } from '@/domain/pass';
 import type { FirstTouch, Reception, Stance } from '@/domain/reception';
 import type { StartVariant } from '@/domain/startVariants';
 import type { PressIntensity } from '@/domain/pressIntensity';
+import type { BallFlight } from '@/domain/ballFlight';
 import type { FormationPattern } from '@/domain/types';
-import { reactTo } from '@/sim/reactTo';
+import { ballFlightTime } from '@/domain/physics';
+import { advanceFlight } from '@/sim/advanceFlight';
 
 export type SceneAction =
   | {
@@ -16,6 +18,9 @@ export type SceneAction =
       readonly firstTouch?: FirstTouch;
       readonly stance?: Stance;
     }
+  | { readonly type: 'advanceTime'; readonly dt: number }
+  | { readonly type: 'seekFlight'; readonly progress: number }
+  | { readonly type: 'skipFlight' }
   | { readonly type: 'reset' }
   | { readonly type: 'setVariant'; readonly variant: StartVariant }
   | { readonly type: 'setFirstTouchPlan'; readonly firstTouch: FirstTouch }
@@ -31,6 +36,8 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
       const target = state.home.players.find((p) => p.id === action.targetId);
       if (!target) return state;
       if (target.id === state.ballHolderId) return state;
+      const holder = findPlayer(state, state.ballHolderId);
+      if (!holder) return state;
       const lastPass: PassOptions = {
         velocity: action.velocity ?? state.passPlan.velocity,
         accuracy: action.accuracy ?? state.passPlan.accuracy,
@@ -39,15 +46,45 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         firstTouch: action.firstTouch ?? state.firstTouchPlan,
         stance: action.stance ?? state.stancePlan,
       };
-      const afterPass: Scene = {
+      const duration = ballFlightTime(
+        holder.position,
+        target.position,
+        lastPass.velocity,
+      );
+      const flight: BallFlight = {
+        fromId: holder.id,
+        toId: target.id,
+        start: holder.position,
+        end: target.position,
+        duration,
+        elapsed: 0,
+        baseline: {
+          homePlayers: state.home.players,
+          awayPlayers: state.away.players,
+        },
+      };
+      return {
         ...state,
         ballHolderId: target.id,
-        ballPos: target.position,
-        ballFlight: null,
+        ballPos: holder.position,
+        ballFlight: flight,
         lastPass,
         lastReception,
       };
-      return reactTo(afterPass);
+    }
+    case 'advanceTime': {
+      if (!state.ballFlight) return state;
+      if (action.dt <= 0) return state;
+      return advanceFlight(state, state.ballFlight.elapsed + action.dt);
+    }
+    case 'seekFlight': {
+      if (!state.ballFlight) return state;
+      const p = clamp01(action.progress);
+      return advanceFlight(state, p * state.ballFlight.duration);
+    }
+    case 'skipFlight': {
+      if (!state.ballFlight) return state;
+      return advanceFlight(state, state.ballFlight.duration);
     }
     case 'reset':
       return createInitialScene(
@@ -100,6 +137,10 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         action.awayFormation,
       );
   }
+}
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
 export { createInitialScene };

@@ -11,12 +11,67 @@ describe('sceneReducer', () => {
     expect(next.ballHolderId).toBe(liv.id);
   });
 
-  it('pass-Aktion löst Reaktion aus (Gegner-Stürmer bewegt sich)', () => {
+  it('pass-Aktion startet einen Ballflug, ohne Gegner-Positionen sofort zu verändern', () => {
     const start = createInitialScene();
     const liv = start.home.players.find((p) => p.role === 'LCB');
     if (!liv) throw new Error('LIV fehlt');
     const next = sceneReducer(start, { type: 'pass', targetId: liv.id });
-    expect(next.away.players).not.toEqual(start.away.players);
+    expect(next.ballFlight).not.toBeNull();
+    expect(next.ballFlight?.toId).toBe(liv.id);
+    expect(next.away.players).toEqual(start.away.players);
+  });
+
+  it('skipFlight schließt den Pass ab und löst die volle Reaktion aus', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const landed = sceneReducer(flying, { type: 'skipFlight' });
+    expect(landed.ballFlight).toBeNull();
+    expect(landed.ballPos).toEqual(liv.position);
+    expect(landed.away.players).not.toEqual(start.away.players);
+  });
+
+  it('advanceTime bewegt den Flug schrittweise voran', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const half = sceneReducer(flying, {
+      type: 'advanceTime',
+      dt: flying.ballFlight!.duration / 2,
+    });
+    expect(half.ballFlight).not.toBeNull();
+    expect(half.ballFlight!.elapsed).toBeCloseTo(
+      flying.ballFlight!.duration / 2,
+      5,
+    );
+  });
+
+  it('advanceTime über die Dauer hinaus schließt den Flug ab', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const after = sceneReducer(flying, { type: 'advanceTime', dt: 10 });
+    expect(after.ballFlight).toBeNull();
+    expect(after.ballPos).toEqual(liv.position);
+  });
+
+  it('seekFlight scrubbt proportional zur Flugdauer', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const quarter = sceneReducer(flying, { type: 'seekFlight', progress: 0.25 });
+    expect(quarter.ballFlight!.elapsed).toBeCloseTo(
+      flying.ballFlight!.duration * 0.25,
+      5,
+    );
+    const ended = sceneReducer(flying, { type: 'seekFlight', progress: 1 });
+    expect(ended.ballFlight).toBeNull();
+  });
+
+  it('advanceTime ohne laufenden Flug ist ein No-op', () => {
+    const start = createInitialScene();
+    const next = sceneReducer(start, { type: 'advanceTime', dt: 0.5 });
+    expect(next).toBe(start);
   });
 
   it('ungültige targetId → unveränderter State', () => {

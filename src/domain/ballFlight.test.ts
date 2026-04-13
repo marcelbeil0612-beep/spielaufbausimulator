@@ -13,6 +13,7 @@ const FLIGHT: BallFlight = {
   end: { x: 10, y: 20 },
   duration: 1,
   elapsed: 0.5,
+  baseline: { homePlayers: [], awayPlayers: [] },
 };
 
 describe('flightProgress', () => {

@@ -1,4 +1,14 @@
-import type { PitchCoord } from './types';
+import type { PitchCoord, Player } from './types';
+
+/**
+ * Baseline der Verteidiger-/Mitspieler-Positionen zum Zeitpunkt des
+ * Pass-Starts. Wird mitgeführt, damit beliebige Zeitpunkte des Flugs
+ * (Scrubbing) reproduzierbar abgeleitet werden können.
+ */
+export type BallFlightBaseline = {
+  readonly homePlayers: readonly Player[];
+  readonly awayPlayers: readonly Player[];
+};
 
 /**
  * Beschreibung eines laufenden Passes.
@@ -7,7 +17,8 @@ import type { PitchCoord } from './types';
  * zwei Spielern und kann zeitlich gescrubbt werden:
  *  - `elapsed / duration` ist der Fortschritt in [0, 1],
  *  - `start` und `end` sind die Start- und Endpositionen des Balls,
- *  - `fromId` / `toId` identifizieren Sender und vorgesehenen Empfänger.
+ *  - `fromId` / `toId` identifizieren Sender und vorgesehenen Empfänger,
+ *  - `baseline` hält die Spielerpositionen unmittelbar vor dem Pass fest.
  */
 export type BallFlight = {
   readonly fromId: string;
@@ -16,6 +27,7 @@ export type BallFlight = {
   readonly end: PitchCoord;
   readonly duration: number;
   readonly elapsed: number;
+  readonly baseline: BallFlightBaseline;
 };
 
 /** Linear interpolierte Ballposition entlang des Flugs. */

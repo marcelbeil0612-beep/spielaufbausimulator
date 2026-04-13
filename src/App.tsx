@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Pitch } from './ui/Pitch';
 import { RatingBadge } from './ui/RatingBadge';
 import { VariantPicker } from './ui/VariantPicker';
@@ -15,6 +16,9 @@ import styles from './App.module.css';
 
 export function App() {
   const { scene, dispatch } = useScene();
+  useEffect(() => {
+    if (scene.ballFlight) dispatch({ type: 'skipFlight' });
+  }, [scene.ballFlight, dispatch]);
   const evaluation = explainRating(scene);
   const rating = evaluation.rating;
   const holder = scene.home.players.find((p) => p.id === scene.ballHolderId);

@@ -1,4 +1,6 @@
 export { reactTo } from './reactTo';
+export type { ReactOptions } from './reactTo';
+export { advanceFlight } from './advanceFlight';
 export {
   pressBallHolder,
   coverCenter,
