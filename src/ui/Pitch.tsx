@@ -8,7 +8,6 @@ import {
   ARROW_INSET,
   BALL_R,
   FACING_AWAY,
-  FACING_HOME,
   LINES_BADGE_R,
   PITCH_SVG_HEIGHT,
   PITCH_SVG_WIDTH,
@@ -16,6 +15,8 @@ import {
   PLAYER_FOCUS_R,
   PLAYER_HIT_R,
   PLAYER_RING_R,
+  deriveHolderFacingHome,
+  deriveReceiverFacingHome,
   frontWedgePoints,
   toSvgCoord,
 } from './pitchGeometry';
@@ -197,6 +198,10 @@ export function Pitch({
         {home.players.map((player) => {
           const isHolder = player.id === ballHolderId;
           const holderDragKind: DragKind = editMode ? 'move' : 'dribble';
+          const playerSvg = toSvgCoord(player.position);
+          const facing = isHolder
+            ? deriveHolderFacingHome(playerSvg)
+            : deriveReceiverFacingHome(playerSvg, ballSvg);
           return (
             <HomeMarker
               key={player.id}
@@ -207,6 +212,7 @@ export function Pitch({
               previewLineCount={previewLines[player.id]}
               holderSvg={holderSvg}
               editMode={editMode}
+              facing={facing}
               onPass={(id) => {
                 setStickyPreviewId(null);
                 onPass(id);
@@ -517,6 +523,7 @@ type HomeMarkerProps = {
   readonly previewLineCount: LineCount | undefined;
   readonly holderSvg: { cx: number; cy: number } | undefined;
   readonly editMode: boolean;
+  readonly facing: FacingVec;
   readonly onPass: (targetId: string) => void;
   readonly stickyPreview: boolean;
   readonly onRequestStickyPreview: (targetId: string) => void;
@@ -562,6 +569,7 @@ function HomeMarker({
   previewLineCount,
   holderSvg,
   editMode,
+  facing,
   onPass,
   stickyPreview,
   onRequestStickyPreview,
@@ -603,7 +611,7 @@ function HomeMarker({
       >
         <circle className={styles.hitArea} cx={cx} cy={cy} r={PLAYER_HIT_R} />
         <circle className={ringClass} cx={cx} cy={cy} r={PLAYER_RING_R} />
-        <PlayerBody cx={cx} cy={cy} dir={FACING_HOME} team="home" />
+        <PlayerBody cx={cx} cy={cy} dir={facing} team="home" />
         <text className={styles.homeLabel} x={cx} y={cy}>
           {player.label}
         </text>
@@ -625,7 +633,7 @@ function HomeMarker({
         onPointerDown={handleEditPointerDown}
       >
         <circle className={styles.hitArea} cx={cx} cy={cy} r={PLAYER_HIT_R} />
-        <PlayerBody cx={cx} cy={cy} dir={FACING_HOME} team="home" />
+        <PlayerBody cx={cx} cy={cy} dir={facing} team="home" />
         <text className={styles.homeLabel} x={cx} y={cy}>
           {player.label}
         </text>
@@ -690,7 +698,7 @@ function HomeMarker({
         />
       ) : null}
       <circle className={styles.focusRing} cx={cx} cy={cy} r={PLAYER_FOCUS_R} />
-      <PlayerBody cx={cx} cy={cy} dir={FACING_HOME} team="home" />
+      <PlayerBody cx={cx} cy={cy} dir={facing} team="home" />
       <text className={styles.homeLabel} x={cx} y={cy}>
         {player.label}
       </text>
