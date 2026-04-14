@@ -4,7 +4,22 @@ import type { BallFlight } from '@/domain/ballFlight';
 import type { Dribble } from '@/domain/dribble';
 import type { LineCount, Rating, SuggestedMove } from '@/sim';
 import { CoachingOverlay } from './CoachingOverlay';
-import { PITCH_SVG_HEIGHT, PITCH_SVG_WIDTH, toSvgCoord } from './pitchGeometry';
+import {
+  ARROW_INSET,
+  BALL_R,
+  FACING_AWAY,
+  FACING_HOME,
+  LINES_BADGE_R,
+  PITCH_SVG_HEIGHT,
+  PITCH_SVG_WIDTH,
+  PLAYER_BODY_R,
+  PLAYER_FOCUS_R,
+  PLAYER_HIT_R,
+  PLAYER_RING_R,
+  frontWedgePoints,
+  toSvgCoord,
+} from './pitchGeometry';
+import type { FacingVec } from './pitchGeometry';
 import styles from './Pitch.module.css';
 
 type Props = {
@@ -319,7 +334,7 @@ function MoveGhost({
         x2={t.cx}
         y2={t.cy}
       />
-      <circle className={styles.moveTarget} cx={t.cx} cy={t.cy} r={2.4} />
+      <circle className={styles.moveTarget} cx={t.cx} cy={t.cy} r={1.8} />
     </g>
   );
 }
@@ -341,9 +356,8 @@ function DribbleGhost({
   if (len < 0.5) return null;
   const nx = dx / len;
   const ny = dy / len;
-  const inset = 4.2;
-  const x1 = f.cx + nx * inset;
-  const y1 = f.cy + ny * inset;
+  const x1 = f.cx + nx * ARROW_INSET;
+  const y1 = f.cy + ny * ARROW_INSET;
   const x2 = t.cx;
   const y2 = t.cy;
   return (
@@ -356,7 +370,7 @@ function DribbleGhost({
         y2={y2}
         markerEnd={`url(#${idPrefix}arrow-dribble)`}
       />
-      <circle className={styles.dribbleTarget} cx={t.cx} cy={t.cy} r={2.2} />
+      <circle className={styles.dribbleTarget} cx={t.cx} cy={t.cy} r={1.6} />
     </g>
   );
 }
@@ -410,7 +424,7 @@ function SuggestionGhost({
         className={styles.suggestionGhostTarget}
         cx={to.cx}
         cy={to.cy}
-        r={variant === 'primary' ? 3.5 : 2.8}
+        r={variant === 'primary' ? 2.6 : 2.0}
       />
     </g>
   );
@@ -456,11 +470,42 @@ function AwayMarker({
       }
       onPointerDown={handler}
     >
-      <circle className={styles.playerAway} cx={cx} cy={cy} r={3.2} />
+      <circle className={styles.hitArea} cx={cx} cy={cy} r={PLAYER_HIT_R} />
+      <PlayerBody cx={cx} cy={cy} dir={FACING_AWAY} team="away" />
       <text className={styles.awayLabel} x={cx} y={cy}>
         {player.label}
       </text>
     </g>
+  );
+}
+
+/**
+ * Gemeinsamer Spieler-Korpus: Front-Keil in Blickrichtung + Kreis-Körper.
+ * Der Keil wird zuerst gezeichnet und vom Kreis halb überlappt, sodass
+ * eine ruhige Tropfensilhouette entsteht. Im Prop-Namen steckt bereits
+ * die spätere Andockstelle (`dir` als Vektor) für Stance-/Erst-Kontakt-
+ * Rotation.
+ */
+function PlayerBody({
+  cx,
+  cy,
+  dir,
+  team,
+}: {
+  readonly cx: number;
+  readonly cy: number;
+  readonly dir: FacingVec;
+  readonly team: 'home' | 'away';
+}) {
+  const bodyClass = team === 'home' ? styles.playerHome : styles.playerAway;
+  const frontClass =
+    team === 'home' ? styles.playerFrontHome : styles.playerFrontAway;
+  const points = frontWedgePoints(cx, cy, PLAYER_BODY_R, dir);
+  return (
+    <>
+      <polygon className={frontClass} points={points} />
+      <circle className={bodyClass} cx={cx} cy={cy} r={PLAYER_BODY_R} />
+    </>
   );
 }
 
@@ -556,8 +601,9 @@ function HomeMarker({
         aria-label={ariaLabel}
         onPointerDown={handlePointerDown}
       >
-        <circle className={ringClass} cx={cx} cy={cy} r={5} />
-        <circle className={styles.playerHome} cx={cx} cy={cy} r={3.2} />
+        <circle className={styles.hitArea} cx={cx} cy={cy} r={PLAYER_HIT_R} />
+        <circle className={ringClass} cx={cx} cy={cy} r={PLAYER_RING_R} />
+        <PlayerBody cx={cx} cy={cy} dir={FACING_HOME} team="home" />
         <text className={styles.homeLabel} x={cx} y={cy}>
           {player.label}
         </text>
@@ -578,7 +624,8 @@ function HomeMarker({
         aria-label={`${player.label} verschieben`}
         onPointerDown={handleEditPointerDown}
       >
-        <circle className={styles.playerHome} cx={cx} cy={cy} r={3.2} />
+        <circle className={styles.hitArea} cx={cx} cy={cy} r={PLAYER_HIT_R} />
+        <PlayerBody cx={cx} cy={cy} dir={FACING_HOME} team="home" />
         <text className={styles.homeLabel} x={cx} y={cy}>
           {player.label}
         </text>
@@ -624,6 +671,7 @@ function HomeMarker({
         }
       }}
     >
+      <circle className={styles.hitArea} cx={cx} cy={cy} r={PLAYER_HIT_R} />
       {holderSvg && previewRating ? (
         <PassArrow
           from={holderSvg}
@@ -638,11 +686,11 @@ function HomeMarker({
           className={`${styles.previewRing} ${previewClass}`}
           cx={cx}
           cy={cy}
-          r={5}
+          r={PLAYER_RING_R}
         />
       ) : null}
-      <circle className={styles.focusRing} cx={cx} cy={cy} r={6.2} />
-      <circle className={styles.playerHome} cx={cx} cy={cy} r={3.2} />
+      <circle className={styles.focusRing} cx={cx} cy={cy} r={PLAYER_FOCUS_R} />
+      <PlayerBody cx={cx} cy={cy} dir={FACING_HOME} team="home" />
       <text className={styles.homeLabel} x={cx} y={cy}>
         {player.label}
       </text>
@@ -669,13 +717,12 @@ function PassArrow({
   if (len === 0) return null;
   const nx = dx / len;
   const ny = dy / len;
-  // Ball und Empfänger-Punkt ausklammern, damit der Pfeil sauber zwischen
-  // den Spielerkreisen verläuft (r≈3.2 + Luft).
-  const inset = 4.2;
-  const x1 = from.cx + nx * inset;
-  const y1 = from.cy + ny * inset;
-  const x2 = to.cx - nx * inset;
-  const y2 = to.cy - ny * inset;
+  // Ball und Empfänger-Punkt ausklammern, damit der Pfeil zwischen den
+  // Körperkreisen verläuft; Inset ist an PLAYER_BODY_R + Luft gekoppelt.
+  const x1 = from.cx + nx * ARROW_INSET;
+  const y1 = from.cy + ny * ARROW_INSET;
+  const x2 = to.cx - nx * ARROW_INSET;
+  const y2 = to.cy - ny * ARROW_INSET;
   const mx = (x1 + x2) / 2;
   const my = (y1 + y2) / 2;
 
@@ -691,7 +738,7 @@ function PassArrow({
       />
       {lines > 0 ? (
         <g transform={`translate(${mx} ${my})`}>
-          <circle className={styles.linesBadge} r={2.4} />
+          <circle className={styles.linesBadge} r={LINES_BADGE_R} />
           <text className={styles.linesBadgeLabel} x={0} y={0}>
             {lines}
           </text>
@@ -708,14 +755,15 @@ function Ball({
   readonly position: { cx: number; cy: number };
   readonly nudged: boolean;
 }) {
-  const dx = nudged ? 2.4 : 0;
-  const dy = nudged ? -2.4 : 0;
+  // Offset so the ball sits neben dem Ballhalter, nicht in ihm.
+  const dx = nudged ? PLAYER_BODY_R * 0.85 : 0;
+  const dy = nudged ? -PLAYER_BODY_R * 0.85 : 0;
   return (
     <circle
       className={styles.ball}
       cx={position.cx + dx}
       cy={position.cy + dy}
-      r={1.1}
+      r={BALL_R}
     />
   );
 }

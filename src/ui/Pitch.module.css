@@ -33,16 +33,32 @@
   fill: var(--color-pitch-line);
 }
 
+/* Unsichtbarer Touch-/Klick-Hotspot pro Spieler. Größer als der sichtbare
+   Körper, damit sich die Marker klein halten lassen, ohne Mobile-Tap zu
+   verschlechtern. */
+.hitArea {
+  fill: transparent;
+  pointer-events: all;
+}
+
 /* Heimteam */
 .playerHome {
   fill: var(--color-home);
   stroke: var(--color-home-ink);
-  stroke-width: 0.2;
+  stroke-width: 0.15;
+}
+
+.playerFrontHome {
+  fill: var(--color-home);
+  stroke: var(--color-home-ink);
+  stroke-width: 0.15;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .homeLabel {
   fill: var(--color-home-ink);
-  font-size: 2.2px;
+  font-size: 1.7px;
   font-weight: 600;
   text-anchor: middle;
   dominant-baseline: central;
@@ -125,12 +141,20 @@
 .playerAway {
   fill: var(--color-away);
   stroke: var(--color-away-ink);
-  stroke-width: 0.2;
+  stroke-width: 0.15;
+}
+
+.playerFrontAway {
+  fill: var(--color-away);
+  stroke: var(--color-away-ink);
+  stroke-width: 0.15;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .awayLabel {
   fill: var(--color-away-ink);
-  font-size: 2.2px;
+  font-size: 1.7px;
   font-weight: 600;
   text-anchor: middle;
   dominant-baseline: central;
@@ -142,31 +166,31 @@
 .ringOpen {
   fill: none;
   stroke: var(--color-rating-open);
-  stroke-width: 0.6;
+  stroke-width: 0.45;
 }
 
 .ringPressure {
   fill: none;
   stroke: var(--color-rating-pressure);
-  stroke-width: 0.6;
+  stroke-width: 0.45;
 }
 
 .ringRisky {
   fill: none;
   stroke: var(--color-rating-risky);
-  stroke-width: 0.7;
+  stroke-width: 0.55;
 }
 
 .ringLoss {
   fill: none;
   stroke: var(--color-rating-loss);
-  stroke-width: 0.8;
+  stroke-width: 0.6;
 }
 
 .ball {
   fill: var(--color-ball);
   stroke: #222;
-  stroke-width: 0.15;
+  stroke-width: 0.1;
   pointer-events: none;
 }
 
@@ -367,12 +391,12 @@
 .linesBadge {
   fill: var(--color-surface);
   stroke: var(--color-text);
-  stroke-width: 0.2;
+  stroke-width: 0.15;
 }
 
 .linesBadgeLabel {
   fill: var(--color-text);
-  font-size: 2.6px;
+  font-size: 1.9px;
   font-weight: 700;
   text-anchor: middle;
   dominant-baseline: central;
