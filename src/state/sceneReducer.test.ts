@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createInitialScene } from '@/domain/scene';
-import { sceneReducer } from './sceneReducer';
+import { HISTORY_MAX, sceneReducer } from './sceneReducer';
 
 describe('sceneReducer', () => {
   it('pass-Aktion ändert den Ballträger', () => {
@@ -136,18 +136,21 @@ describe('sceneReducer', () => {
     const liv = start.home.players.find((p) => p.role === 'LCB');
     if (!liv) throw new Error('LIV fehlt');
     const passed = sceneReducer(start, { type: 'pass', targetId: liv.id });
-    const resetScene = sceneReducer(passed, { type: 'reset' });
+    const landed = sceneReducer(passed, { type: 'skipFlight' });
+    const resetScene = sceneReducer(landed, { type: 'reset' });
     expect(resetScene.ballHolderId).toBe(start.ballHolderId);
     expect(resetScene.away.players).toEqual(start.away.players);
     expect(resetScene.lastPass).toBeNull();
     expect(resetScene.lastReception).toBeNull();
+    expect(resetScene.lastPassLane).toBeNull();
   });
 
   it('setVariant wechselt die Startvariante und setzt die Szene zurück', () => {
     const start = createInitialScene('narrow');
     const liv = start.home.players.find((p) => p.role === 'LCB')!;
     const afterPass = sceneReducer(start, { type: 'pass', targetId: liv.id });
-    const wide = sceneReducer(afterPass, { type: 'setVariant', variant: 'wide' });
+    const landed = sceneReducer(afterPass, { type: 'skipFlight' });
+    const wide = sceneReducer(landed, { type: 'setVariant', variant: 'wide' });
     expect(wide.variant).toBe('wide');
     expect(wide.ballHolderId).toBe(createInitialScene('wide').ballHolderId);
     const livWide = wide.home.players.find((p) => p.role === 'LCB')!;
@@ -395,15 +398,15 @@ describe('sceneReducer', () => {
     expect(next).toBe(start);
   });
 
-  it('reset löscht die History', () => {
+  it('reset pusht einen Snapshot in die History (undo-bar)', () => {
     const start = createInitialScene();
     const liv = start.home.players.find((p) => p.role === 'LCB')!;
-    const withHistory = sceneReducer(start, {
-      type: 'pass',
-      targetId: liv.id,
-    });
-    const reset = sceneReducer(withHistory, { type: 'reset' });
-    expect(reset.history).toEqual([]);
+    const passed = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const landed = sceneReducer(passed, { type: 'skipFlight' });
+    const reset = sceneReducer(landed, { type: 'reset' });
+    expect(reset.history.length).toBeGreaterThan(0);
+    const undone = sceneReducer(reset, { type: 'undo' });
+    expect(undone.ballHolderId).toBe(landed.ballHolderId);
   });
 
   it('dribble-Aktion startet ein Dribbling und pusht einen Snapshot', () => {
@@ -550,5 +553,145 @@ describe('sceneReducer', () => {
     expect(undone.dribble).toBeNull();
     expect(undone.ballHolderId).toBe(start.ballHolderId);
     expect(undone.history).toHaveLength(0);
+  });
+
+  describe('History-Cap', () => {
+    it('history wächst nicht über HISTORY_MAX hinaus', () => {
+      let scene = createInitialScene();
+      for (let i = 0; i < HISTORY_MAX + 10; i++) {
+        scene = sceneReducer(scene, {
+          type: 'setPressIntensity',
+          pressIntensity: i % 2 === 0 ? 'low' : 'high',
+        });
+      }
+      expect(scene.history.length).toBe(HISTORY_MAX);
+    });
+  });
+
+  describe('Animations-Guards', () => {
+    it('pass während eines laufenden Flugs ist ein No-op', () => {
+      const start = createInitialScene();
+      const liv = start.home.players.find((p) => p.role === 'LCB')!;
+      const riv = start.home.players.find((p) => p.role === 'RCB')!;
+      const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+      const attempted = sceneReducer(flying, { type: 'pass', targetId: riv.id });
+      expect(attempted).toBe(flying);
+    });
+
+    it('reset während eines laufenden Flugs ist ein No-op', () => {
+      const start = createInitialScene();
+      const liv = start.home.players.find((p) => p.role === 'LCB')!;
+      const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+      const attempted = sceneReducer(flying, { type: 'reset' });
+      expect(attempted).toBe(flying);
+    });
+
+    it('loadScenario während eines laufenden Flugs ist ein No-op', () => {
+      const start = createInitialScene();
+      const liv = start.home.players.find((p) => p.role === 'LCB')!;
+      const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+      const attempted = sceneReducer(flying, {
+        type: 'loadScenario',
+        scenarioId: 'low-block',
+      });
+      expect(attempted).toBe(flying);
+    });
+
+    it('setVariant während eines laufenden Flugs ist ein No-op', () => {
+      const start = createInitialScene('narrow');
+      const liv = start.home.players.find((p) => p.role === 'LCB')!;
+      const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+      const attempted = sceneReducer(flying, {
+        type: 'setVariant',
+        variant: 'wide',
+      });
+      expect(attempted).toBe(flying);
+    });
+
+    it('setAwayFormation während eines laufenden Flugs ist ein No-op', () => {
+      const start = createInitialScene();
+      const liv = start.home.players.find((p) => p.role === 'LCB')!;
+      const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+      const attempted = sceneReducer(flying, {
+        type: 'setAwayFormation',
+        awayFormation: '5-3-2',
+      });
+      expect(attempted).toBe(flying);
+    });
+  });
+
+  describe('Undo-Semantik für Picker- und Kontroll-Actions', () => {
+    it('setPressIntensity ist per Undo rückgängig zu machen', () => {
+      const start = createInitialScene();
+      const changed = sceneReducer(start, {
+        type: 'setPressIntensity',
+        pressIntensity: 'low',
+      });
+      expect(changed.pressIntensity).toBe('low');
+      const undone = sceneReducer(changed, { type: 'undo' });
+      expect(undone.pressIntensity).toBe(start.pressIntensity);
+    });
+
+    it('setVariant ist per Undo rückgängig zu machen', () => {
+      const start = createInitialScene('narrow');
+      const changed = sceneReducer(start, {
+        type: 'setVariant',
+        variant: 'wide',
+      });
+      const undone = sceneReducer(changed, { type: 'undo' });
+      expect(undone.variant).toBe('narrow');
+    });
+
+    it('loadScenario ist per Undo rückgängig zu machen', () => {
+      const start = createInitialScene();
+      const loaded = sceneReducer(start, {
+        type: 'loadScenario',
+        scenarioId: 'back-five',
+      });
+      expect(loaded.away.formation).toBe('5-3-2');
+      const undone = sceneReducer(loaded, { type: 'undo' });
+      expect(undone.away.formation).toBe(start.away.formation);
+    });
+
+    it('setFirstTouchPlan / setStancePlan pushen History', () => {
+      let scene = createInitialScene();
+      scene = sceneReducer(scene, {
+        type: 'setFirstTouchPlan',
+        firstTouch: 'dirty',
+      });
+      scene = sceneReducer(scene, {
+        type: 'setStancePlan',
+        stance: 'open',
+      });
+      expect(scene.history).toHaveLength(2);
+    });
+  });
+
+  describe('lastPassLane', () => {
+    it('wird beim Pass geometrisch gesetzt', () => {
+      const start = createInitialScene();
+      const liv = start.home.players.find((p) => p.role === 'LCB')!;
+      const passed = sceneReducer(start, { type: 'pass', targetId: liv.id });
+      expect(passed.lastPassLane).not.toBeNull();
+      expect(passed.lastPassLane!.closest).toBeGreaterThan(0);
+    });
+
+    it('bleibt nach skipFlight erhalten (Live-Rating-Konsistenz)', () => {
+      const start = createInitialScene();
+      const liv = start.home.players.find((p) => p.role === 'LCB')!;
+      const passed = sceneReducer(start, { type: 'pass', targetId: liv.id });
+      const landed = sceneReducer(passed, { type: 'skipFlight' });
+      expect(landed.lastPassLane).toEqual(passed.lastPassLane);
+    });
+
+    it('ist nach reset wieder null', () => {
+      const start = createInitialScene();
+      const liv = start.home.players.find((p) => p.role === 'LCB')!;
+      const passed = sceneReducer(start, { type: 'pass', targetId: liv.id });
+      const landed = sceneReducer(passed, { type: 'skipFlight' });
+      expect(landed.lastPassLane).not.toBeNull();
+      const reset = sceneReducer(landed, { type: 'reset' });
+      expect(reset.lastPassLane).toBeNull();
+    });
   });
 });

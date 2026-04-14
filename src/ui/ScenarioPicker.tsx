@@ -3,6 +3,7 @@ import styles from './ScenarioPicker.module.css';
 
 type Props = {
   readonly onLoad: (scenarioId: string) => void;
+  readonly disabled?: boolean;
 };
 
 /**
@@ -11,13 +12,14 @@ type Props = {
  * gebundenen Wert, damit das wiederholte Laden des gleichen Szenarios
  * möglich bleibt.
  */
-export function ScenarioPicker({ onLoad }: Props) {
+export function ScenarioPicker({ onLoad, disabled }: Props) {
   return (
     <label className={styles.wrapper}>
       <span className={styles.label}>Szenario</span>
       <select
         className={styles.select}
         defaultValue=""
+        disabled={disabled}
         onChange={(event) => {
           const id = event.target.value;
           if (!id) return;

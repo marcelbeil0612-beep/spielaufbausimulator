@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { PitchCoord, Player, Team } from '@/domain/types';
 import type { BallFlight } from '@/domain/ballFlight';
 import type { Dribble } from '@/domain/dribble';
-import type { LineCount, Rating } from '@/sim';
+import type { LineCount, Rating, SuggestedMove } from '@/sim';
 import { CoachingOverlay } from './CoachingOverlay';
 import { PITCH_SVG_HEIGHT, PITCH_SVG_WIDTH, toSvgCoord } from './pitchGeometry';
 import styles from './Pitch.module.css';
@@ -22,6 +22,8 @@ type Props = {
   readonly onMovePlayer: (playerId: string, position: PitchCoord) => void;
   readonly editMode: boolean;
   readonly coachingOverlay: boolean;
+  readonly suggestions?: readonly SuggestedMove[];
+  readonly onApplySuggestion?: (suggestion: SuggestedMove) => void;
   /**
    * Präfix für SVG-interne IDs (z. B. `<marker>`-Pfeilspitzen), damit
    * mehrere Pitches parallel im Dokument nicht um dieselben IDs kämpfen.
@@ -55,6 +57,8 @@ export function Pitch({
   onMovePlayer,
   editMode,
   coachingOverlay,
+  suggestions,
+  onApplySuggestion,
   idPrefix = '',
 }: Props) {
   const holder =
@@ -65,6 +69,10 @@ export function Pitch({
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  // Touch-Fallback für die Hover-Vorschau: beim ersten Tap wird das Ziel
+  // nur angeheftet (sticky preview), erst der zweite Tap auf denselben
+  // Spieler committet den Pass. Maus/Stift bleiben unverändert (1 Klick).
+  const [stickyPreviewId, setStickyPreviewId] = useState<string | null>(null);
 
   const svgToWorld = useCallback(
     (clientX: number, clientY: number): PitchCoord | null => {
@@ -184,7 +192,12 @@ export function Pitch({
               previewLineCount={previewLines[player.id]}
               holderSvg={holderSvg}
               editMode={editMode}
-              onPass={onPass}
+              onPass={(id) => {
+                setStickyPreviewId(null);
+                onPass(id);
+              }}
+              stickyPreview={stickyPreviewId === player.id}
+              onRequestStickyPreview={(id) => setStickyPreviewId(id)}
               onHolderPointerDown={handlePlayerPointerDown(
                 player.id,
                 player.position,
@@ -201,6 +214,16 @@ export function Pitch({
           );
         })}
 
+        {suggestions && suggestions.length > 0
+          ? suggestions.map((s, i) => (
+              <SuggestionGhost
+                key={s.code}
+                suggestion={s}
+                variant={i === 0 ? 'primary' : 'alternate'}
+                onApply={onApplySuggestion}
+              />
+            ))
+          : null}
         {ballFlight ? <FlightTrail flight={ballFlight} current={ballSvg} /> : null}
         {dribble ? <DribbleTrail dribble={dribble} current={ballSvg} /> : null}
         {drag ? (
@@ -339,6 +362,60 @@ function DribbleGhost({
 }
 
 
+function SuggestionGhost({
+  suggestion,
+  variant,
+  onApply,
+}: {
+  readonly suggestion: SuggestedMove;
+  readonly variant: 'primary' | 'alternate';
+  readonly onApply?: (s: SuggestedMove) => void;
+}) {
+  const from = toSvgCoord(suggestion.from);
+  const to = toSvgCoord(suggestion.to);
+  const handleActivate = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
+    onApply?.(suggestion);
+  };
+  const groupClass =
+    variant === 'primary'
+      ? `${styles.suggestionGhostGroup} ${styles.suggestionGhostPrimary}`
+      : `${styles.suggestionGhostGroup} ${styles.suggestionGhostAlternate}`;
+  const label =
+    variant === 'primary'
+      ? `Beste Empfehlung übernehmen: ${suggestion.title}`
+      : `Alternative übernehmen: ${suggestion.title}`;
+  return (
+    <g
+      className={groupClass}
+      role="button"
+      tabIndex={0}
+      aria-label={label}
+      onClick={handleActivate}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleActivate(event);
+        }
+      }}
+    >
+      <line
+        className={styles.suggestionGhostLine}
+        x1={from.cx}
+        y1={from.cy}
+        x2={to.cx}
+        y2={to.cy}
+      />
+      <circle
+        className={styles.suggestionGhostTarget}
+        cx={to.cx}
+        cy={to.cy}
+        r={variant === 'primary' ? 3.5 : 2.8}
+      />
+    </g>
+  );
+}
+
 function ArrowheadMarker({ id, cls }: { readonly id: string; readonly cls: string }) {
   return (
     <marker
@@ -396,6 +473,8 @@ type HomeMarkerProps = {
   readonly holderSvg: { cx: number; cy: number } | undefined;
   readonly editMode: boolean;
   readonly onPass: (targetId: string) => void;
+  readonly stickyPreview: boolean;
+  readonly onRequestStickyPreview: (targetId: string) => void;
   readonly onHolderPointerDown: (event: React.PointerEvent<SVGElement>) => void;
   readonly onEditPointerDown: (event: React.PointerEvent<SVGElement>) => void;
   readonly draggable: boolean;
@@ -439,12 +518,17 @@ function HomeMarker({
   holderSvg,
   editMode,
   onPass,
+  stickyPreview,
+  onRequestStickyPreview,
   onHolderPointerDown,
   onEditPointerDown,
   draggable,
   idPrefix,
 }: HomeMarkerProps) {
   const { cx, cy } = toSvgCoord(player.position);
+  // Letzter Eingabetyp dieses Markers – für Tap-to-preview auf Touch.
+  // Mouse/Pen dürfen weiterhin sofort passen (Hover-Vorschau).
+  const lastPointerTypeRef = useRef<string>('mouse');
 
   if (isHolder) {
     const ringClass =
@@ -502,7 +586,15 @@ function HomeMarker({
     );
   }
 
-  const handlePass = () => onPass(player.id);
+  const handleActivate = () => {
+    // Auf Touch: erster Tap heftet die Vorschau an, zweiter Tap auf denselben
+    // Spieler committet. Auf Maus/Stift direkt passen – unverändertes Desktop-Verhalten.
+    if (lastPointerTypeRef.current === 'touch' && !stickyPreview) {
+      onRequestStickyPreview(player.id);
+      return;
+    }
+    onPass(player.id);
+  };
   const previewClass = previewRating
     ? PREVIEW_RING_CLASSES[previewRating]
     : undefined;
@@ -516,15 +608,19 @@ function HomeMarker({
 
   return (
     <g
-      className={styles.homeGroup}
+      className={`${styles.homeGroup} ${stickyPreview ? styles.homeGroupPreviewActive : ''}`}
       role="button"
       tabIndex={0}
       aria-label={ariaLabel}
-      onClick={handlePass}
+      aria-pressed={stickyPreview || undefined}
+      onPointerDown={(event) => {
+        lastPointerTypeRef.current = event.pointerType;
+      }}
+      onClick={handleActivate}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          handlePass();
+          onPass(player.id);
         }
       }}
     >

@@ -16,6 +16,8 @@ export { linesBroken } from './linesBroken';
 export type { LineCount } from './linesBroken';
 export { simulatePassPreview } from './simulatePassPreview';
 export type { PassPreviewOptions } from './simulatePassPreview';
+export { suggestMoves, explainPrimarySuggestion } from './suggestMoves';
+export type { SuggestedMove, SuggestedMoveCode } from './suggestMoves';
 export {
   assessPassLane,
   assessPassLaneInScene,

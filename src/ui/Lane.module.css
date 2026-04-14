@@ -16,8 +16,9 @@
 
 .laneEdit {
   border-style: dashed;
-  border-color: color-mix(in srgb, var(--color-text) 55%, transparent);
-  background: color-mix(in srgb, var(--color-text) 5%, transparent);
+  border-width: 2px;
+  border-color: var(--color-rating-pressure);
+  background: color-mix(in srgb, var(--color-rating-pressure) 6%, transparent);
 }
 
 .removeButton {
@@ -64,9 +65,102 @@
 
 .pickers {
   display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  align-items: flex-start;
+  gap: var(--space-3);
   flex-wrap: wrap;
+}
+
+.pickerGroup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-text) 3%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.pickerGroupLabel {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.editBanner {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-rating-pressure) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-rating-pressure) 45%, transparent);
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.editBanner strong {
+  color: var(--color-rating-pressure);
+}
+
+.overlayLegend {
+  list-style: none;
+  padding: 8px 12px;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 4px 12px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.overlayLegend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legendSwatch {
+  flex-shrink: 0;
+  width: 20px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.legendLineAway {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-away) 0 4px,
+    transparent 4px 7px
+  );
+  opacity: 0.8;
+}
+
+.legendLineHome {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-home) 0 4px,
+    transparent 4px 7px
+  );
+  opacity: 0.6;
+}
+
+.legendPressure {
+  background: color-mix(in srgb, var(--color-rating-risky) 20%, transparent);
+  border: 1px dashed var(--color-rating-risky);
+  border-radius: 999px;
+  height: 12px;
+}
+
+.legendContact {
+  background: transparent;
+  border: 1px dashed var(--color-rating-pressure);
+  border-radius: 999px;
+  height: 12px;
 }
 
 .statusGroup {
@@ -128,4 +222,93 @@
   background: var(--color-surface);
   border-radius: var(--radius-md);
   padding: var(--space-3);
+}
+
+.suggestionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.suggestionButton {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed color-mix(in srgb, var(--color-rating-open) 55%, transparent);
+  background: color-mix(in srgb, var(--color-rating-open) 6%, transparent);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.suggestionButton:hover {
+  background: color-mix(in srgb, var(--color-rating-open) 14%, transparent);
+  border-color: var(--color-rating-open);
+}
+
+.suggestionButton:focus-visible {
+  outline: 2px solid var(--color-rating-open);
+  outline-offset: 2px;
+}
+
+.suggestionPrimary {
+  border-style: solid;
+  border-color: var(--color-rating-open);
+  background: color-mix(in srgb, var(--color-rating-open) 12%, transparent);
+}
+
+.suggestionAlternate {
+  opacity: 0.85;
+  background: color-mix(in srgb, var(--color-rating-open) 4%, transparent);
+  border-color: color-mix(in srgb, var(--color-rating-open) 35%, transparent);
+  font-size: 12px;
+}
+
+.suggestionAlternate:hover {
+  opacity: 1;
+}
+
+.suggestionKind {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-rating-open) 22%, transparent);
+  color: var(--color-text);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.suggestionAlternate .suggestionKind {
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+  color: var(--color-text-muted);
+}
+
+.suggestionTitleRow {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.suggestionPlayer {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.suggestionReason {
+  color: var(--color-text-muted);
+  font-size: 12px;
 }

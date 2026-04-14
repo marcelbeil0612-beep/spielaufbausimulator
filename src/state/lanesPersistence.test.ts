@@ -88,4 +88,19 @@ describe('lanesPersistence', () => {
     const state = loadLanes(undefined);
     expect(state.lanes).toHaveLength(1);
   });
+
+  it('saveLanes persistiert die History nicht', () => {
+    const initial = createInitialLanesState(createInitialScene());
+    const first = initial.lanes[0]!.scene;
+    const fakeHistoryLane = {
+      ...initial.lanes[0]!,
+      scene: { ...first, history: [first] },
+    };
+    const withHistory = { ...initial, lanes: [fakeHistoryLane] };
+    saveLanes(withHistory, storage);
+    const raw = storage.getItem(LANES_STORAGE_KEY);
+    expect(raw).toBeTruthy();
+    const parsed = JSON.parse(raw!);
+    expect(parsed.lanes[0].scene.history).toEqual([]);
+  });
 });

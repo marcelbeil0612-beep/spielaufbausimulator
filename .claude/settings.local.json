@@ -33,7 +33,11 @@
       "Bash(git init:*)",
       "Bash(git config:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m 'chore: initial checkpoint \\(Track A baseline\\):*)"
+      "Bash(git commit -m 'chore: initial checkpoint \\(Track A baseline\\):*)",
+      "Bash(git commit -m ':*)",
+      "Bash(grep:*)",
+      "Bash(ls src/ui/*.test.*)",
+      "Bash(ls *.md src/*.md src/**/*.md)"
     ]
   }
 }

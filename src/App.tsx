@@ -5,6 +5,7 @@ import { Timeline } from './ui/Timeline';
 import type { AnimationState } from './ui/Timeline';
 import { useLanes, useFlightAnimation } from './state';
 import type { SceneAction } from './state';
+import { SCENARIOS } from './domain/scenarios';
 import styles from './App.module.css';
 
 export function App() {
@@ -48,6 +49,20 @@ export function App() {
           Lehrfall: 4-3-3 gegen 4-4-2 hohes Pressing · Pass TW → linker
           Innenverteidiger
         </p>
+        <ol className={styles.starter} aria-label="So spielst du">
+          <li>
+            <strong>Pass-Plan einstellen</strong> (Schärfe, Genauigkeit,
+            Annahme, Stellung)
+          </li>
+          <li>
+            <strong>Mitspieler antippen</strong> zum Passen – oder Ballhalter
+            in eine freie Fläche ziehen zum Dribbeln
+          </li>
+          <li>
+            <strong>Rating-Badge + Begründung</strong> lesen – das ist der
+            Lerneffekt
+          </li>
+        </ol>
       </header>
 
       <Timeline
@@ -118,21 +133,22 @@ export function App() {
               action: { type: 'loadScenario', scenarioId },
             })
           }
+          disabled={activeAnim !== null}
         />
+        <details className={styles.scenarioInfo}>
+          <summary>Szenarien erklären</summary>
+          <ul>
+            {SCENARIOS.map((s) => (
+              <li key={s.id}>
+                <strong>{s.label}</strong> — {s.description}
+              </li>
+            ))}
+          </ul>
+        </details>
         <span className={styles.laneCount}>
           {laneCount === 1 ? '1 Lane' : `${laneCount} Lanes`}
         </span>
       </section>
-
-      <p className={styles.hint}>
-        Wähle Startvariante, ersten Kontakt, Passschärfe und Passgenauigkeit –
-        tippe dann einen Mitspieler, um zu passen, oder ziehe den Ballhalter
-        auf eine freie Fläche, um zu dribbeln. Der Ball fliegt bzw. der Dribbler
-        läuft in Echtzeit (verlangsamt) – Gegner verschieben nur so weit, wie
-        sie in der Dauer schaffen. Timeline steuert die aktive Lane; Play gilt
-        für alle Lanes synchron, damit man den Unterschied im selben Moment
-        sieht.
-      </p>
     </main>
   );
 }

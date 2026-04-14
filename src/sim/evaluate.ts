@@ -89,20 +89,29 @@ export type Evaluation = {
 };
 
 const REASON_TEXT: Record<ReasonCode, string> = {
-  'no-holder': 'Kein Ballträger.',
-  'lane-blocked': 'Gegner fängt die Passlinie ab.',
-  overload: 'Drei oder mehr Gegner im Presseradius.',
-  'close-contact-dirty': 'Gegner im Nahkontakt und unsaubere Annahme.',
-  'sharp-dirty': 'Scharfer Pass auf unsaubere Annahme.',
-  'sharp-imprecise-press': 'Scharfer, ungenauer Pass unter Pressing.',
+  'no-holder': 'Kein Ballträger – niemand kann den Ball spielen.',
+  'lane-blocked':
+    'Gegner fängt die Passlinie ab – der Pass kommt gar nicht erst an.',
+  overload:
+    'Drei oder mehr Gegner im Presseradius – der Ballträger ist überladen.',
+  'close-contact-dirty':
+    'Gegner im Nahkontakt bei unsauberer Annahme – der Ball springt dem Gegner zu.',
+  'sharp-dirty':
+    'Scharfer Pass auf unsaubere Annahme – der Empfänger hat zu wenig Zeit, den Ball zu kontrollieren.',
+  'sharp-imprecise-press':
+    'Scharfer, ungenauer Pass unter Pressing – der Empfänger wird überrumpelt.',
   'closed-dirty-press':
-    'Geschlossene Stellung und unsaubere Annahme unter Pressing.',
-  'lane-threatened': 'Passlinie ist eingeengt.',
-  'two-pressers': 'Zwei Gegner im Presseradius.',
-  dirty: 'Unsaubere Annahme.',
-  imprecise: 'Ungenauer Pass ohne Entschärfung.',
-  'one-presser': 'Ein Gegner im Presseradius.',
-  open: 'Offene Situation – kein direkter Druck.',
+    'Geschlossene Stellung und unsaubere Annahme unter Pressing – der Spieler dreht sich in den Gegner rein.',
+  'lane-threatened':
+    'Passlinie ist eingeengt – der Empfänger bekommt den Ball unter direktem Druck.',
+  'two-pressers':
+    'Zwei Gegner im Presseradius – der Ballträger muss schnell eine Lösung finden.',
+  dirty: 'Unsaubere Annahme – der Empfänger verliert beim Mitnehmen Zeit.',
+  imprecise:
+    'Ungenauer Pass ohne Entschärfung – der Empfänger muss ihm nachjagen.',
+  'one-presser':
+    'Ein Gegner im Presseradius – lösbar mit sauberer Annahme oder schnellem Weiterspielen.',
+  open: 'Offene Situation – der Ball kann in Ruhe weitergespielt werden.',
 };
 
 /**

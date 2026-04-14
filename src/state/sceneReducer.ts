@@ -1,4 +1,4 @@
-import type { Scene } from '@/domain/scene';
+import type { Scene, SceneSnapshot } from '@/domain/scene';
 import { createInitialScene, findPlayer, snapshotScene } from '@/domain/scene';
 import type { PassAccuracy, PassOptions, PassVelocity } from '@/domain/pass';
 import type { FirstTouch, Reception, Stance } from '@/domain/reception';
@@ -8,10 +8,18 @@ import type { BallFlight } from '@/domain/ballFlight';
 import type { Dribble, DribbleSpeed } from '@/domain/dribble';
 import { DEFAULT_DRIBBLE_SPEED, dribbleDuration } from '@/domain/dribble';
 import { findScenario } from '@/domain/scenarios';
+import { assessPassLane } from '@/domain/passLane';
 import type { FormationPattern, PitchCoord } from '@/domain/types';
 import { ballFlightTime } from '@/domain/physics';
 import { advanceFlight } from '@/sim/advanceFlight';
 import { advanceDribble } from '@/sim/advanceDribble';
+
+/**
+ * Maximale Länge des In-Memory-Undo-Stacks. History wird nicht persistiert
+ * (siehe `persistence.saveScene`), dieser Cap schützt nur die Laufzeit vor
+ * unbegrenztem Wachstum bei langen Sessions.
+ */
+export const HISTORY_MAX = 20;
 
 export type SceneAction =
   | {
@@ -49,6 +57,7 @@ export type SceneAction =
 export function sceneReducer(state: Scene, action: SceneAction): Scene {
   switch (action.type) {
     case 'pass': {
+      if (isAnimating(state)) return state;
       const target = state.home.players.find((p) => p.id === action.targetId);
       if (!target) return state;
       if (target.id === state.ballHolderId) return state;
@@ -79,6 +88,15 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
           awayPlayers: state.away.players,
         },
       };
+      const attackerIsHome = state.home.players.some((p) => p.id === holder.id);
+      const opponents = attackerIsHome
+        ? state.away.players
+        : state.home.players;
+      const lastPassLane = assessPassLane(
+        holder.position,
+        target.position,
+        opponents.map((p) => p.position),
+      );
       return {
         ...state,
         ballHolderId: target.id,
@@ -86,11 +104,12 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         ballFlight: flight,
         lastPass,
         lastReception,
-        history: [...state.history, snapshotScene(state)],
+        lastPassLane,
+        history: pushHistory(state.history, snapshotScene(state)),
       };
     }
     case 'dribble': {
-      if (state.ballFlight || state.dribble) return state;
+      if (isAnimating(state)) return state;
       const holder = state.home.players.find((p) => p.id === state.ballHolderId);
       if (!holder) return state;
       const end = clampPitch(action.targetPos);
@@ -113,11 +132,11 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         ...state,
         dribble,
         ballPos: holder.position,
-        history: [...state.history, snapshotScene(state)],
+        history: pushHistory(state.history, snapshotScene(state)),
       };
     }
     case 'movePlayer': {
-      if (state.ballFlight || state.dribble) return state;
+      if (isAnimating(state)) return state;
       const target = clampPitch(action.position);
       const homeIdx = state.home.players.findIndex((p) => p.id === action.playerId);
       if (homeIdx >= 0) {
@@ -130,7 +149,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
           ...state,
           home: { ...state.home, players: newPlayers },
           ballPos: state.ballHolderId === action.playerId ? target : state.ballPos,
-          history: [...state.history, snapshotScene(state)],
+          history: pushHistory(state.history, snapshotScene(state)),
         };
       }
       const awayIdx = state.away.players.findIndex((p) => p.id === action.playerId);
@@ -143,7 +162,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         return {
           ...state,
           away: { ...state.away, players: newPlayers },
-          history: [...state.history, snapshotScene(state)],
+          history: pushHistory(state.history, snapshotScene(state)),
         };
       }
       return state;
@@ -183,12 +202,18 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
       };
     }
     case 'loadScenario': {
+      if (isAnimating(state)) return state;
       const scenario = findScenario(action.scenarioId);
       if (!scenario) return state;
-      return scenario.build();
+      const next = scenario.build();
+      return {
+        ...next,
+        history: pushHistory(state.history, snapshotScene(state)),
+      };
     }
-    case 'reset':
-      return createInitialScene(
+    case 'reset': {
+      if (isAnimating(state)) return state;
+      const next = createInitialScene(
         state.variant,
         state.firstTouchPlan,
         state.passPlan,
@@ -196,9 +221,15 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.pressIntensity,
         state.away.formation,
       );
-    case 'setVariant':
+      return {
+        ...next,
+        history: pushHistory(state.history, snapshotScene(state)),
+      };
+    }
+    case 'setVariant': {
       if (state.variant === action.variant) return state;
-      return createInitialScene(
+      if (isAnimating(state)) return state;
+      const next = createInitialScene(
         action.variant,
         state.firstTouchPlan,
         state.passPlan,
@@ -206,30 +237,50 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.pressIntensity,
         state.away.formation,
       );
+      return {
+        ...next,
+        history: pushHistory(state.history, snapshotScene(state)),
+      };
+    }
     case 'setFirstTouchPlan':
       if (state.firstTouchPlan === action.firstTouch) return state;
-      return { ...state, firstTouchPlan: action.firstTouch };
+      return {
+        ...state,
+        firstTouchPlan: action.firstTouch,
+        history: pushHistory(state.history, snapshotScene(state)),
+      };
     case 'setPassVelocity':
       if (state.passPlan.velocity === action.velocity) return state;
       return {
         ...state,
         passPlan: { ...state.passPlan, velocity: action.velocity },
+        history: pushHistory(state.history, snapshotScene(state)),
       };
     case 'setPassAccuracy':
       if (state.passPlan.accuracy === action.accuracy) return state;
       return {
         ...state,
         passPlan: { ...state.passPlan, accuracy: action.accuracy },
+        history: pushHistory(state.history, snapshotScene(state)),
       };
     case 'setStancePlan':
       if (state.stancePlan === action.stance) return state;
-      return { ...state, stancePlan: action.stance };
+      return {
+        ...state,
+        stancePlan: action.stance,
+        history: pushHistory(state.history, snapshotScene(state)),
+      };
     case 'setPressIntensity':
       if (state.pressIntensity === action.pressIntensity) return state;
-      return { ...state, pressIntensity: action.pressIntensity };
-    case 'setAwayFormation':
+      return {
+        ...state,
+        pressIntensity: action.pressIntensity,
+        history: pushHistory(state.history, snapshotScene(state)),
+      };
+    case 'setAwayFormation': {
       if (state.away.formation === action.awayFormation) return state;
-      return createInitialScene(
+      if (isAnimating(state)) return state;
+      const next = createInitialScene(
         state.variant,
         state.firstTouchPlan,
         state.passPlan,
@@ -237,7 +288,27 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.pressIntensity,
         action.awayFormation,
       );
+      return {
+        ...next,
+        history: pushHistory(state.history, snapshotScene(state)),
+      };
+    }
   }
+}
+
+function isAnimating(scene: Scene): boolean {
+  return scene.ballFlight !== null || scene.dribble !== null;
+}
+
+function pushHistory(
+  history: readonly SceneSnapshot[],
+  snapshot: SceneSnapshot,
+): readonly SceneSnapshot[] {
+  const next = [...history, snapshot];
+  if (next.length > HISTORY_MAX) {
+    return next.slice(next.length - HISTORY_MAX);
+  }
+  return next;
 }
 
 function clamp01(v: number): number {

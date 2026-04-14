@@ -118,4 +118,72 @@ describe('persistence', () => {
     const scene = loadScene(storage);
     expect(scene.dribble).toBeNull();
   });
+
+  it('History wird beim Serialisieren verworfen', () => {
+    const original = createInitialScene();
+    const withHistory = { ...original, history: [original] } as ReturnType<
+      typeof createInitialScene
+    >;
+    saveScene(withHistory, storage);
+    const raw = storage.getItem('spielaufbau:scene:v3');
+    expect(raw).toBeTruthy();
+    const parsed = JSON.parse(raw!);
+    expect(parsed.history).toEqual([]);
+  });
+
+  it('History wird beim Laden immer leer gesetzt, auch wenn alte Daten welche enthalten', () => {
+    const legacy = {
+      ...createInitialScene(),
+      history: [createInitialScene()],
+    } as unknown as Record<string, unknown>;
+    storage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+    const scene = loadScene(storage);
+    expect(scene.history).toEqual([]);
+  });
+
+  it('Szene ohne home.players-Array → Initialszene (Deep-Validator)', () => {
+    const broken = {
+      ...createInitialScene(),
+      home: { side: 'home', formation: '4-3-3' },
+    } as unknown;
+    storage.setItem(STORAGE_KEY, JSON.stringify(broken));
+    const scene = loadScene(storage);
+    expect(scene.ballHolderId).toBe(createInitialScene().ballHolderId);
+  });
+
+  it('Szene mit leerem home.players → Initialszene', () => {
+    const broken = {
+      ...createInitialScene(),
+      home: { side: 'home', formation: '4-3-3', players: [] },
+    } as unknown;
+    storage.setItem(STORAGE_KEY, JSON.stringify(broken));
+    const scene = loadScene(storage);
+    expect(scene.ballHolderId).toBe(createInitialScene().ballHolderId);
+  });
+
+  it('Szene mit NaN-Koordinaten → Initialszene', () => {
+    const base = createInitialScene();
+    const broken = {
+      ...base,
+      home: {
+        ...base.home,
+        players: base.home.players.map((p, i) =>
+          i === 0 ? { ...p, position: { x: Number.NaN, y: 0 } } : p,
+        ),
+      },
+    } as unknown;
+    storage.setItem(STORAGE_KEY, JSON.stringify(broken));
+    const scene = loadScene(storage);
+    expect(scene.ballHolderId).toBe(createInitialScene().ballHolderId);
+  });
+
+  it('Szene mit ballHolderId ohne passenden Spieler → Initialszene', () => {
+    const broken = {
+      ...createInitialScene(),
+      ballHolderId: 'phantom-player',
+    } as unknown;
+    storage.setItem(STORAGE_KEY, JSON.stringify(broken));
+    const scene = loadScene(storage);
+    expect(scene.ballHolderId).toBe(createInitialScene().ballHolderId);
+  });
 });

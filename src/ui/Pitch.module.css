@@ -86,7 +86,8 @@
 }
 
 .homeGroup:hover .previewRing,
-.homeGroup:focus-visible .previewRing {
+.homeGroup:focus-visible .previewRing,
+.homeGroupPreviewActive .previewRing {
   opacity: 0.9;
 }
 
@@ -259,8 +260,14 @@
 }
 
 .homeGroup:hover .passArrowGroup,
-.homeGroup:focus-visible .passArrowGroup {
+.homeGroup:focus-visible .passArrowGroup,
+.homeGroupPreviewActive .passArrowGroup {
   opacity: 0.95;
+}
+
+.homeGroupPreviewActive .playerHome {
+  stroke-width: 0.5;
+  stroke: var(--color-rating-open);
 }
 
 .passArrow {
@@ -287,6 +294,74 @@
   stroke: var(--color-rating-loss);
   fill: var(--color-rating-loss);
   stroke-width: 0.7;
+}
+
+/* Vorschlags-Ebene (Anschlussbewegungen) */
+.suggestionGhostGroup {
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.suggestionGhostGroup:hover,
+.suggestionGhostGroup:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.suggestionGhostPrimary {
+  opacity: 1;
+}
+
+.suggestionGhostPrimary .suggestionGhostLine {
+  stroke-width: 0.6;
+  stroke-dasharray: none;
+  opacity: 0.9;
+}
+
+.suggestionGhostPrimary .suggestionGhostTarget {
+  fill: color-mix(in srgb, var(--color-rating-open) 32%, transparent);
+  stroke-dasharray: none;
+  stroke-width: 0.55;
+}
+
+.suggestionGhostAlternate {
+  opacity: 0.6;
+}
+
+.suggestionGhostAlternate:hover,
+.suggestionGhostAlternate:focus-visible {
+  opacity: 0.95;
+}
+
+.suggestionGhostAlternate .suggestionGhostLine {
+  stroke-width: 0.35;
+  opacity: 0.55;
+}
+
+.suggestionGhostAlternate .suggestionGhostTarget {
+  fill: color-mix(in srgb, var(--color-rating-open) 10%, transparent);
+  stroke-width: 0.3;
+}
+
+.suggestionGhostLine {
+  stroke: var(--color-rating-open);
+  stroke-width: 0.45;
+  stroke-dasharray: 1.2 0.8;
+  fill: none;
+  opacity: 0.7;
+}
+
+.suggestionGhostTarget {
+  fill: color-mix(in srgb, var(--color-rating-open) 18%, transparent);
+  stroke: var(--color-rating-open);
+  stroke-width: 0.4;
+  stroke-dasharray: 0.9 0.6;
+}
+
+.suggestionGhostGroup:hover .suggestionGhostTarget,
+.suggestionGhostGroup:focus-visible .suggestionGhostTarget {
+  fill: color-mix(in srgb, var(--color-rating-open) 35%, transparent);
+  stroke-dasharray: none;
 }
 
 .linesBadge {

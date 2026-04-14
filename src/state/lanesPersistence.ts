@@ -1,13 +1,20 @@
 import type { Scene } from '@/domain/scene';
 import type { Lane, LanesState } from './lanes';
 import { createInitialLanesState } from './lanes';
-import { loadScene, parseScene, safeLocalStorage } from './persistence';
+import {
+  loadScene,
+  parseScene,
+  safeLocalStorage,
+  serializeScene,
+} from './persistence';
 
 export const LANES_STORAGE_KEY = 'spielaufbau:lanes:v4';
 
 /**
- * Schreibt die Lanes-State als JSON. Fehlschläge (Quota, Security) werden
- * stillschweigend ignoriert – Persistenz ist Convenience.
+ * Schreibt den Lanes-State als JSON. Fehlschläge (Quota, Security) werden
+ * mit einem `console.warn` protokolliert und ansonsten ignoriert –
+ * Persistenz ist Convenience, keine Kernfunktion. Die In-Memory-History
+ * jeder Lane wird beim Serialisieren verworfen (siehe `serializeScene`).
  */
 export function saveLanes(
   state: LanesState,
@@ -15,9 +22,20 @@ export function saveLanes(
 ): void {
   if (!storage) return;
   try {
-    storage.setItem(LANES_STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignorieren
+    const serializable: LanesState = {
+      ...state,
+      lanes: state.lanes.map((lane) => ({
+        ...lane,
+        scene: serializeScene(lane.scene),
+      })),
+    };
+    storage.setItem(LANES_STORAGE_KEY, JSON.stringify(serializable));
+  } catch (err) {
+    try {
+      console.warn('[spielaufbau] saveLanes fehlgeschlagen:', err);
+    } catch {
+      // Logging darf nicht werfen.
+    }
   }
 }
 

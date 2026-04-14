@@ -9,7 +9,10 @@ import type { PressIntensity } from './pressIntensity';
 import { DEFAULT_PRESS_INTENSITY } from './pressIntensity';
 import type { BallFlight } from './ballFlight';
 import type { Dribble } from './dribble';
+import type { PassLaneAssessment } from './passLane';
 import { teamFromFormation } from './team';
+
+
 import { FORMATION_4_3_3, FORMATION_4_4_2 } from './formations';
 import { FORMATION_4_2_3_1 } from './formations/away_4231';
 import { FORMATION_5_3_2 } from './formations/away_532';
@@ -41,6 +44,13 @@ export type Scene = {
   readonly pressIntensity: PressIntensity;
   readonly lastPass: PassOptions | null;
   readonly lastReception: Reception | null;
+  /**
+   * Geometrische Bewertung der Passlinie des zuletzt gespielten Passes.
+   * `null`, solange noch kein Pass lief oder nach Reset. Wird vom Live-
+   * Rating genutzt, damit nach einem Pass dasselbe Ergebnis sichtbar ist,
+   * das die Preview vorher gezeigt hat.
+   */
+  readonly lastPassLane: PassLaneAssessment | null;
   readonly history: readonly SceneSnapshot[];
 };
 
@@ -62,6 +72,7 @@ export function snapshotScene(scene: Scene): SceneSnapshot {
     pressIntensity: scene.pressIntensity,
     lastPass: scene.lastPass,
     lastReception: scene.lastReception,
+    lastPassLane: scene.lastPassLane,
   };
 }
 
@@ -110,6 +121,7 @@ export function createInitialScene(
     pressIntensity,
     lastPass: null,
     lastReception: null,
+    lastPassLane: null,
     history: [],
   };
 }
