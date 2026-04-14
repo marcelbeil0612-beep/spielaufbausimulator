@@ -24,9 +24,9 @@ import styles from './Lane.module.css';
 type Props = {
   readonly lane: LaneState;
   readonly dispatch: (action: SceneAction) => void;
-  readonly isActive?: boolean;
-  readonly onActivate?: () => void;
-  readonly onRemove?: () => void;
+  readonly isActive?: boolean | undefined;
+  readonly onActivate?: (() => void) | undefined;
+  readonly onRemove?: (() => void) | undefined;
 };
 
 /**

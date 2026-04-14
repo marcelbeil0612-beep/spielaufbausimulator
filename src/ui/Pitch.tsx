@@ -369,7 +369,7 @@ function SuggestionGhost({
 }: {
   readonly suggestion: SuggestedMove;
   readonly variant: 'primary' | 'alternate';
-  readonly onApply?: (s: SuggestedMove) => void;
+  readonly onApply?: ((s: SuggestedMove) => void) | undefined;
 }) {
   const from = toSvgCoord(suggestion.from);
   const to = toSvgCoord(suggestion.to);
