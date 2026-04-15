@@ -279,7 +279,7 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
                   onClick={() => applySuggestion(s)}
                 >
                   <span className={styles.suggestionKind}>
-                    {isPrimary ? 'Beste Anschlussbewegung' : 'Alternative'}
+                    {isPrimary ? 'Hauptvorschlag' : 'Alternative'}
                   </span>
                   <span className={styles.suggestionTitleRow}>
                     <strong>{s.title}</strong>
@@ -290,7 +290,9 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
                     ) : null}
                   </span>
                   <span className={styles.suggestionReason}>
-                    {isPrimary ? explainPrimarySuggestion(s, scene) : s.reason}
+                    {isPrimary
+                      ? explainPrimarySuggestion(s, scene)
+                      : 'Weitere ruhige Anschlussoption.'}
                   </span>
                 </button>
               </li>

@@ -40,6 +40,35 @@ export type FacingVec = { readonly dx: number; readonly dy: number };
 export const FACING_HOME: FacingVec = { dx: 0, dy: -1 };
 export const FACING_AWAY: FacingVec = { dx: 0, dy: 1 };
 
+export type ReceiverBodyShape = 'open' | 'half_open' | 'closed';
+export type ReceiverArrivalSide = 'front_foot' | 'back_foot' | 'neutral';
+export type ReceiverContinuation = 'turn' | 'set' | 'back' | 'carry_sideways';
+
+export type ReceiverCue = {
+  readonly bodyShape: ReceiverBodyShape;
+  readonly arrivalSide: ReceiverArrivalSide;
+  readonly continuation: ReceiverContinuation;
+};
+
+export const RECEIVER_BODY_SHAPE_LABELS: Record<ReceiverBodyShape, string> = {
+  open: 'offen',
+  half_open: 'halboffen',
+  closed: 'geschlossen',
+};
+
+export const RECEIVER_ARRIVAL_SIDE_LABELS: Record<ReceiverArrivalSide, string> = {
+  front_foot: 'Vorderfuß',
+  back_foot: 'Hinterfuß',
+  neutral: 'neutral',
+};
+
+export const RECEIVER_CONTINUATION_LABELS: Record<ReceiverContinuation, string> = {
+  turn: 'aufdrehen',
+  set: 'klatschen',
+  back: 'zurück',
+  carry_sideways: 'seitlich mitnehmen',
+};
+
 /**
  * Bringt einen Vektor auf Länge 1. Zero- bzw. NaN-Vektoren fallen auf
  * `FACING_HOME` zurück, damit der Keil-Renderer nie ein degeneriertes
@@ -124,6 +153,52 @@ export function deriveReceiverFacingHome(
 }
 
 /**
+ * Kleine didaktische Interpretation des Empfängers aus sichtbarer Körper-
+ * ausrichtung und Passrichtung. Bewusst heuristisch:
+ *  - `bodyShape`: wie offen bleibt der Spieler zur Spielfortsetzung?
+ *  - `arrivalSide`: kommt der Ball eher auf Vorder- oder Hinterfuß an?
+ *  - `continuation`: welche einfache Anschlussaktion liegt nahe?
+ */
+export function deriveReceiverCueHome(
+  facing: FacingVec,
+  passFromSvg: { readonly cx: number; readonly cy: number },
+  receiverSvg: { readonly cx: number; readonly cy: number },
+): ReceiverCue {
+  const incoming = facingFromTo(passFromSvg, receiverSvg);
+  const forwardness = dotFacing(facing, FACING_HOME);
+  const incomingAlignment = dotFacing(facing, incoming);
+
+  const bodyShape: ReceiverBodyShape =
+    forwardness >= 0.8 && incomingAlignment >= 0.1
+      ? 'open'
+      : forwardness >= 0.58 && incomingAlignment > -0.35
+        ? 'half_open'
+        : 'closed';
+
+  const arrivalSide: ReceiverArrivalSide =
+    incomingAlignment >= 0.35
+      ? 'back_foot'
+      : incomingAlignment <= -0.15
+        ? 'front_foot'
+        : 'neutral';
+
+  const continuation: ReceiverContinuation =
+    arrivalSide === 'back_foot' && bodyShape !== 'closed'
+      ? 'turn'
+      : bodyShape === 'closed' && arrivalSide === 'front_foot'
+        ? 'set'
+        : bodyShape === 'closed'
+          ? 'back'
+          : Math.abs(facing.dx) >= 0.22 || arrivalSide === 'front_foot'
+            ? 'carry_sideways'
+            : bodyShape === 'open'
+              ? 'turn'
+              : 'back';
+
+  return { bodyShape, arrivalSide, continuation };
+}
+
+/**
  * Erzeugt die Dreieck-Punkte für die Front-Markierung relativ zum
  * Körpermittelpunkt. Tip sitzt knapp außerhalb des Körperkreises in
  * Blickrichtung, die Basis innerhalb – so schmilzt der Keil optisch mit
@@ -147,4 +222,8 @@ export function frontWedgePoints(
   const brx = baseCx - px * halfWidth;
   const bry = baseCy - py * halfWidth;
   return `${tipX},${tipY} ${blx},${bly} ${brx},${bry}`;
+}
+
+function dotFacing(a: FacingVec, b: FacingVec): number {
+  return a.dx * b.dx + a.dy * b.dy;
 }

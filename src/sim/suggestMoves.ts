@@ -3,6 +3,14 @@ import { findPlayer } from '@/domain/scene';
 import { getLines } from '@/domain/lines';
 import { distance } from '@/domain/geometry';
 import type { PitchCoord, Player } from '@/domain/types';
+import { PRESSURE_RADIUS } from './evaluate';
+import {
+  deriveReceiverCueHome,
+  deriveReceiverFacingHome,
+  toSvgCoord,
+} from '@/ui/pitchGeometry';
+import type { ReceiverCue } from '@/ui/pitchGeometry';
+import type { FirstTouch } from '@/domain/reception';
 
 export type SuggestedMoveCode = 'support_ball' | 'between_lines';
 
@@ -62,6 +70,7 @@ export function scoreSuggestion(s: SuggestedMove, scene: Scene): number {
   const step = distance(s.from, s.to);
   let score = BASE_SCORE[s.code] - step * 2;
   const holder = findPlayer(scene, scene.ballHolderId);
+  const context = deriveSuggestionContext(scene);
   if (holder) {
     if (s.code === 'support_ball') {
       const dAfter = distance(s.to, holder.position);
@@ -70,6 +79,9 @@ export function scoreSuggestion(s: SuggestedMove, scene: Scene): number {
     if (s.code === 'between_lines' && Math.abs(s.to.x - 50) < 8) {
       score += 5;
     }
+  }
+  if (context) {
+    score += scoreCueBias(s.code, context);
   }
   return score;
 }
@@ -86,13 +98,34 @@ export function explainPrimarySuggestion(
   s: SuggestedMove,
   scene: Scene,
 ): string {
+  const context = deriveSuggestionContext(scene);
   if (s.code === 'support_ball') {
     const holder = findPlayer(scene, scene.ballHolderId);
     const dAfter = holder ? distance(s.to, holder.position) : Infinity;
+    if (context && context.firstTouch === 'dirty' && context.pressers >= 1) {
+      return 'Unter Druck eher auf Klatschball oder sichere Ablage – kurze Unterstützung hilft sofort.';
+    }
+    if (
+      context &&
+      (context.cue.continuation === 'set' || context.cue.continuation === 'back')
+    ) {
+      return context.pressers >= 1 || context.firstTouch === 'dirty'
+        ? 'Unter Druck eher auf Klatschball oder sichere Ablage – kurze Unterstützung hilft sofort.'
+        : 'Der Empfänger steht eher auf Klatsch- oder Sicherheitsball – die kurze Stafette bleibt naheliegend.';
+    }
     if (dAfter <= 12) {
       return 'Gibt dem Ballhalter sofort eine kurze, sichere Anspielstation.';
     }
     return 'Verkürzt den Abstand zum Ball und stabilisiert die Staffelung.';
+  }
+  if (context?.cue.continuation === 'turn' && context.cue.bodyShape !== 'closed') {
+    return 'Der Empfänger ist eher offen zum Aufdrehen – der Raum zwischen den Linien wird direkt nutzbar.';
+  }
+  if (context?.cue.continuation === 'carry_sideways') {
+    return 'Seitliches Mitnehmen liegt nahe – der Zwischenlinienraum bleibt als nächster Anschluss gut besetzt.';
+  }
+  if (context?.cue.continuation === 'back' && context.pressers >= 1) {
+    return 'Unter Druck bleibt die sichere Staffelung wichtig – der Zwischenlinienraum hält die Folgeaktion trotzdem offen.';
   }
   if (Math.abs(s.to.x - 50) < 8) {
     return 'Besetzt zentral den Raum zwischen Mittelfeld und Abwehr – direkt progressiv.';
@@ -234,4 +267,71 @@ function clampCoord(v: number, min: number, max: number): number {
 
 function samePosition(a: PitchCoord, b: PitchCoord): boolean {
   return Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+}
+
+type SuggestionContext = {
+  readonly cue: ReceiverCue;
+  readonly pressers: number;
+  readonly firstTouch: FirstTouch;
+};
+
+function deriveSuggestionContext(scene: Scene): SuggestionContext | null {
+  const holder = scene.home.players.find((p) => p.id === scene.ballHolderId);
+  if (!holder || !scene.lastPass || !scene.lastReception) return null;
+  const previous = scene.history[scene.history.length - 1];
+  if (!previous) return null;
+  const sender =
+    previous.home.players.find((p) => p.id === previous.ballHolderId) ??
+    previous.away.players.find((p) => p.id === previous.ballHolderId);
+  if (!sender) return null;
+
+  const receiverSvg = toSvgCoord(holder.position);
+  const lateBallSvg = interpolateSvg(toSvgCoord(sender.position), receiverSvg, 0.8);
+  const facing = deriveReceiverFacingHome(receiverSvg, lateBallSvg);
+  const cue = deriveReceiverCueHome(facing, toSvgCoord(sender.position), receiverSvg);
+  const pressers = scene.away.players.filter(
+    (p) => distance(p.position, holder.position) <= PRESSURE_RADIUS,
+  ).length;
+
+  return {
+    cue,
+    pressers,
+    firstTouch: scene.lastReception.firstTouch,
+  };
+}
+
+function scoreCueBias(code: SuggestedMoveCode, context: SuggestionContext): number {
+  const { cue, pressers, firstTouch } = context;
+  if (code === 'between_lines') {
+    let score = 0;
+    if (cue.continuation === 'turn') score += 6;
+    if (cue.continuation === 'carry_sideways') score += 4;
+    if (cue.bodyShape === 'open') score += 2;
+    if (cue.bodyShape === 'half_open') score += 1;
+    if (cue.arrivalSide === 'back_foot') score += 2;
+    if (firstTouch === 'dirty') score -= 2;
+    if (pressers >= 2) score -= 2;
+    return score;
+  }
+
+  let score = 0;
+  if (cue.continuation === 'set') score += 6;
+  if (cue.continuation === 'back') score += 5;
+  if (cue.arrivalSide === 'front_foot') score += 2;
+  if (firstTouch === 'dirty') score += 3;
+  if (firstTouch === 'neutral') score += 1;
+  if (pressers >= 1) score += 2;
+  if (pressers >= 2) score += 2;
+  return score;
+}
+
+function interpolateSvg(
+  from: { readonly cx: number; readonly cy: number },
+  to: { readonly cx: number; readonly cy: number },
+  t: number,
+): { cx: number; cy: number } {
+  return {
+    cx: from.cx + (to.cx - from.cx) * t,
+    cy: from.cy + (to.cy - from.cy) * t,
+  };
 }

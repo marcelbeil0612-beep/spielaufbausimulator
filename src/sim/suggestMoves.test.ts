@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Scene } from '@/domain/scene';
 import { createInitialScene } from '@/domain/scene';
 import { distance } from '@/domain/geometry';
+import { sceneReducer } from '@/state/sceneReducer';
 import {
   explainPrimarySuggestion,
   scoreSuggestion,
@@ -193,6 +194,66 @@ describe('suggestMoves – Priorisierung', () => {
       expect(s.to.y).toBeLessThanOrEqual(95);
     }
   });
+
+  it('turn-Kontext begünstigt progressive between-lines-Lösung leicht zusätzlich', () => {
+    const start = createInitialScene();
+    const st = start.home.players.find((p) => p.role === 'ST')!;
+    const contextual: Scene = {
+      ...start,
+      ballHolderId: st.id,
+      lastPass: { velocity: 'normal', accuracy: 'neutral' },
+      lastReception: { firstTouch: 'clean', stance: 'open' },
+      history: [start],
+    };
+    const base: Scene = {
+      ...contextual,
+      lastPass: null,
+      lastReception: null,
+      history: [],
+    };
+    const move: SuggestedMove = {
+      playerId: 'x',
+      from: { x: 48, y: 42 },
+      to: { x: 50, y: 58 },
+      code: 'between_lines',
+      title: 't',
+      reason: 'r',
+    };
+    expect(scoreSuggestion(move, contextual)).toBeGreaterThan(
+      scoreSuggestion(move, base),
+    );
+  });
+
+  it('dirty first touch unter Druck begünstigt support_ball als sichere Folgeoption', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const contextual = sceneReducer(
+      sceneReducer(start, {
+        type: 'pass',
+        targetId: liv.id,
+        firstTouch: 'dirty',
+      }),
+      { type: 'skipFlight' },
+    );
+    const base: Scene = {
+      ...contextual,
+      lastPass: null,
+      lastReception: null,
+      history: [],
+    };
+    const holder = contextual.home.players.find((p) => p.id === contextual.ballHolderId)!;
+    const move: SuggestedMove = {
+      playerId: 'x',
+      from: { x: holder.position.x + 8, y: holder.position.y + 15 },
+      to: { x: holder.position.x + 4, y: holder.position.y + 9 },
+      code: 'support_ball',
+      title: 't',
+      reason: 'r',
+    };
+    expect(scoreSuggestion(move, contextual)).toBeGreaterThan(
+      scoreSuggestion(move, base),
+    );
+  });
 });
 
 describe('explainPrimarySuggestion', () => {
@@ -265,5 +326,28 @@ describe('explainPrimarySuggestion', () => {
     };
     expect(() => explainPrimarySuggestion(s, broken)).not.toThrow();
     expect(explainPrimarySuggestion(s, broken)).toMatch(/Verkürzt/);
+  });
+
+  it('support_ball unter dirty/Pressing kann didaktisch Richtung Klatschball begründen', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const scene = sceneReducer(
+      sceneReducer(start, {
+        type: 'pass',
+        targetId: liv.id,
+        firstTouch: 'dirty',
+      }),
+      { type: 'skipFlight' },
+    );
+    const holder = scene.home.players.find((p) => p.id === scene.ballHolderId)!;
+    const s: SuggestedMove = {
+      playerId: 'x',
+      from: { x: holder.position.x + 8, y: holder.position.y + 14 },
+      to: { x: holder.position.x + 3, y: holder.position.y + 10 },
+      code: 'support_ball',
+      title: 't',
+      reason: 'r',
+    };
+    expect(explainPrimarySuggestion(s, scene)).toMatch(/Klatschball|Ablage/);
   });
 });

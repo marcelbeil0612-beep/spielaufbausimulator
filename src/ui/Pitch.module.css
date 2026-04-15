@@ -104,7 +104,7 @@
 .homeGroup:hover .previewRing,
 .homeGroup:focus-visible .previewRing,
 .homeGroupPreviewActive .previewRing {
-  opacity: 0.9;
+  opacity: 0.78;
 }
 
 .previewRingOpen {
@@ -201,16 +201,16 @@
 .flightLane {
   stroke: var(--color-text);
   stroke-width: 0.25;
-  opacity: 0.2;
+  opacity: 0.14;
   stroke-dasharray: 1.2 0.8;
   fill: none;
 }
 
 .flightTrail {
   stroke: var(--color-ball);
-  stroke-width: 0.6;
+  stroke-width: 0.55;
   stroke-linecap: round;
-  opacity: 0.85;
+  opacity: 0.78;
   fill: none;
 }
 
@@ -323,7 +323,7 @@
 /* Vorschlags-Ebene (Anschlussbewegungen) */
 .suggestionGhostGroup {
   cursor: pointer;
-  opacity: 0.85;
+  opacity: 0.78;
 }
 
 .suggestionGhostGroup:hover,
@@ -333,23 +333,23 @@
 }
 
 .suggestionGhostPrimary {
-  opacity: 1;
+  opacity: 0.94;
 }
 
 .suggestionGhostPrimary .suggestionGhostLine {
-  stroke-width: 0.6;
+  stroke-width: 0.58;
   stroke-dasharray: none;
-  opacity: 0.9;
+  opacity: 0.82;
 }
 
 .suggestionGhostPrimary .suggestionGhostTarget {
-  fill: color-mix(in srgb, var(--color-rating-open) 32%, transparent);
+  fill: color-mix(in srgb, var(--color-rating-open) 24%, transparent);
   stroke-dasharray: none;
-  stroke-width: 0.55;
+  stroke-width: 0.5;
 }
 
 .suggestionGhostAlternate {
-  opacity: 0.6;
+  opacity: 0.42;
 }
 
 .suggestionGhostAlternate:hover,
@@ -358,13 +358,13 @@
 }
 
 .suggestionGhostAlternate .suggestionGhostLine {
-  stroke-width: 0.35;
-  opacity: 0.55;
+  stroke-width: 0.28;
+  opacity: 0.4;
 }
 
 .suggestionGhostAlternate .suggestionGhostTarget {
-  fill: color-mix(in srgb, var(--color-rating-open) 10%, transparent);
-  stroke-width: 0.3;
+  fill: color-mix(in srgb, var(--color-rating-open) 6%, transparent);
+  stroke-width: 0.24;
 }
 
 .suggestionGhostLine {
@@ -401,4 +401,55 @@
   text-anchor: middle;
   dominant-baseline: central;
   font-family: var(--font-sans);
+}
+
+.receiverCueGroup {
+  opacity: 0.92;
+}
+
+.receiverCueBox {
+  fill: color-mix(in srgb, var(--color-surface) 97%, white);
+  stroke: color-mix(in srgb, var(--color-home-ink) 22%, transparent);
+  stroke-width: 0.14;
+}
+
+.receiverCueLine {
+  fill: var(--color-text);
+  font-size: 1.2px;
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: hanging;
+  font-family: var(--font-sans);
+}
+
+.receiverCueEmphasis {
+  font-weight: 700;
+  font-size: 1.28px;
+}
+
+.receiverCueMeta {
+  fill: var(--color-text-muted);
+  font-size: 1.02px;
+}
+
+@media (max-width: 719px) {
+  .suggestionGhostAlternate {
+    display: none;
+  }
+
+  .receiverCueGroup {
+    opacity: 0.88;
+  }
+
+  .receiverCueLine {
+    font-size: 1.08px;
+  }
+
+  .receiverCueEmphasis {
+    font-size: 1.16px;
+  }
+
+  .receiverCueMeta {
+    font-size: 0.94px;
+  }
 }

@@ -15,12 +15,16 @@ import {
   PLAYER_FOCUS_R,
   PLAYER_HIT_R,
   PLAYER_RING_R,
+  RECEIVER_ARRIVAL_SIDE_LABELS,
+  RECEIVER_BODY_SHAPE_LABELS,
+  RECEIVER_CONTINUATION_LABELS,
+  deriveReceiverCueHome,
   deriveHolderFacingHome,
   deriveReceiverFacingHome,
   frontWedgePoints,
   toSvgCoord,
 } from './pitchGeometry';
-import type { FacingVec } from './pitchGeometry';
+import type { FacingVec, ReceiverCue } from './pitchGeometry';
 import styles from './Pitch.module.css';
 
 type Props = {
@@ -208,6 +212,14 @@ export function Pitch({
             : isHolder
             ? deriveHolderFacingHome(playerSvg)
             : deriveReceiverFacingHome(playerSvg, ballSvg);
+          const receiverCue =
+            isReceivingActivePass && ballFlight
+              ? deriveReceiverCueHome(
+                  facing,
+                  toSvgCoord(ballFlight.start),
+                  playerSvg,
+                )
+              : undefined;
           return (
             <HomeMarker
               key={player.id}
@@ -219,6 +231,7 @@ export function Pitch({
               holderSvg={holderSvg}
               editMode={editMode}
               facing={facing}
+              receiverCue={receiverCue}
               onPass={(id) => {
                 setStickyPreviewId(null);
                 onPass(id);
@@ -532,6 +545,7 @@ type HomeMarkerProps = {
   readonly holderSvg: { cx: number; cy: number } | undefined;
   readonly editMode: boolean;
   readonly facing: FacingVec;
+  readonly receiverCue: ReceiverCue | undefined;
   readonly onPass: (targetId: string) => void;
   readonly stickyPreview: boolean;
   readonly onRequestStickyPreview: (targetId: string) => void;
@@ -578,6 +592,7 @@ function HomeMarker({
   holderSvg,
   editMode,
   facing,
+  receiverCue,
   onPass,
   stickyPreview,
   onRequestStickyPreview,
@@ -706,9 +721,54 @@ function HomeMarker({
         />
       ) : null}
       <circle className={styles.focusRing} cx={cx} cy={cy} r={PLAYER_FOCUS_R} />
+      {receiverCue ? <ReceiverCueBadge x={cx} y={cy} cue={receiverCue} /> : null}
       <PlayerBody cx={cx} cy={cy} dir={facing} team="home" />
       <text className={styles.homeLabel} x={cx} y={cy}>
         {player.label}
+      </text>
+    </g>
+  );
+}
+
+function ReceiverCueBadge({
+  x,
+  y,
+  cue,
+}: {
+  readonly x: number;
+  readonly y: number;
+  readonly cue: ReceiverCue;
+}) {
+  const line1 = RECEIVER_CONTINUATION_LABELS[cue.continuation];
+  const line2 = `${RECEIVER_BODY_SHAPE_LABELS[cue.bodyShape]} · ${RECEIVER_ARRIVAL_SIDE_LABELS[cue.arrivalSide]}`;
+  const width = Math.max(13, Math.min(22, Math.max(line1.length, line2.length) * 0.92));
+  const height = 6.4;
+  const badgeX = Math.min(PITCH_SVG_WIDTH - width - 0.6, Math.max(0.6, x + 3.6));
+  const badgeY = Math.min(PITCH_SVG_HEIGHT - height - 0.6, Math.max(0.6, y - 9.8));
+  return (
+    <g className={styles.receiverCueGroup} pointerEvents="none">
+      <rect
+        className={styles.receiverCueBox}
+        x={badgeX}
+        y={badgeY}
+        width={width}
+        height={height}
+        rx={1.4}
+        ry={1.4}
+      />
+      <text
+        className={`${styles.receiverCueLine} ${styles.receiverCueEmphasis}`}
+        x={badgeX + width / 2}
+        y={badgeY + 1.55}
+      >
+        {line1}
+      </text>
+      <text
+        className={`${styles.receiverCueLine} ${styles.receiverCueMeta}`}
+        x={badgeX + width / 2}
+        y={badgeY + 3.9}
+      >
+        {line2}
       </text>
     </g>
   );

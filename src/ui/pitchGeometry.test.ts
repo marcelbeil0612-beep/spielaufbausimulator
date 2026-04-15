@@ -4,6 +4,10 @@ import {
   FACING_HOME,
   PITCH_SVG_HEIGHT,
   PITCH_SVG_WIDTH,
+  RECEIVER_ARRIVAL_SIDE_LABELS,
+  RECEIVER_BODY_SHAPE_LABELS,
+  RECEIVER_CONTINUATION_LABELS,
+  deriveReceiverCueHome,
   deriveHolderFacingHome,
   deriveReceiverFacingHome,
   facingFromTo,
@@ -188,5 +192,47 @@ describe('deriveReceiverFacingHome', () => {
     expect(Math.hypot(f.dx, f.dy)).toBeCloseTo(1, 6);
     expect(Number.isFinite(f.dx)).toBe(true);
     expect(Number.isFinite(f.dy)).toBe(true);
+  });
+});
+
+describe('deriveReceiverCueHome', () => {
+  it('offene Stellung mit Ball von hinten deutet auf Hinterfuß + Aufdrehen', () => {
+    const cue = deriveReceiverCueHome(
+      FACING_HOME,
+      { cx: 34, cy: 85 },
+      { cx: 34, cy: 45 },
+    );
+    expect(cue.bodyShape).toBe('open');
+    expect(cue.arrivalSide).toBe('back_foot');
+    expect(cue.continuation).toBe('turn');
+  });
+
+  it('seitlich geöffnete Stellung liefert halboffen + seitliches Mitnehmen', () => {
+    const cue = deriveReceiverCueHome(
+      normalizeFacing({ dx: 0.6, dy: -0.8 }),
+      { cx: 60, cy: 61 },
+      { cx: 28, cy: 48 },
+    );
+    expect(cue.bodyShape).toBe('half_open');
+    expect(cue.continuation).toBe('carry_sideways');
+  });
+
+  it('geschlossene Stellung gegen die Ballrichtung deutet auf Vorderfuß + Klatschen', () => {
+    const cue = deriveReceiverCueHome(
+      normalizeFacing({ dx: 0.95, dy: -0.3 }),
+      { cx: 55, cy: 48 },
+      { cx: 34, cy: 48 },
+    );
+    expect(cue.bodyShape).toBe('closed');
+    expect(cue.arrivalSide).toBe('front_foot');
+    expect(cue.continuation).toBe('set');
+  });
+
+  it('Label-Maps decken alle didaktischen Kategorien ab', () => {
+    expect(RECEIVER_BODY_SHAPE_LABELS.half_open).toBe('halboffen');
+    expect(RECEIVER_ARRIVAL_SIDE_LABELS.back_foot).toBe('Hinterfuß');
+    expect(RECEIVER_CONTINUATION_LABELS.carry_sideways).toBe(
+      'seitlich mitnehmen',
+    );
   });
 });
