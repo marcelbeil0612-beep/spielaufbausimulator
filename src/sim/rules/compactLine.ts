@@ -12,6 +12,18 @@ import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
  */
 export const LINE_RECOVERY_OFFSET = 4;
 
+/**
+ * Mindest-Anteil des Linien-Rückzugs für ballferne Mittelfeldspieler.
+ * 0.4 = ballfernster Spieler bekommt 40 % der Schrittweite des ballnächsten,
+ * bleibt also nicht völlig stehen, kollabiert die Linie aber auch nicht
+ * symmetrisch.
+ */
+const BALL_FAR_RECOVERY_FLOOR = 0.4;
+
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
 const MIDFIELD_ROLES: readonly RoleCode[] = [
   'CDM',
   'LCM',
@@ -43,14 +55,23 @@ export function compactLine(scene: Scene, options?: ReactOptions): Scene {
     LINE_RECOVERY_OFFSET * PRESS_INTENSITY_FACTORS[scene.pressIntensity].line;
   if (magnitude === 0) return scene;
   const direction = attackerIsHome ? +1 : -1;
+  const ballX = scene.ballPos.x;
 
   let changed = false;
   const updatedPlayers = opp.players.map((p) => {
     if (!MIDFIELD_ROLES.includes(p.role)) return p;
+    // Ballnähe-Bias: ballnaher Mittelfeldspieler rückt deutlich zurück,
+    // ballferner deutlich weniger – sonst „kollabiert" die Linie symmetrisch.
+    const ballNearness = clamp(
+      1 - Math.abs(p.position.x - ballX) / 55,
+      BALL_FAR_RECOVERY_FLOOR,
+      1,
+    );
+    const scaledMagnitude = magnitude * ballNearness;
     const cap =
       options?.dt !== undefined
-        ? Math.min(magnitude, maxShiftDistance(options.dt, p.role))
-        : magnitude;
+        ? Math.min(scaledMagnitude, maxShiftDistance(options.dt, p.role))
+        : scaledMagnitude;
     if (cap <= 0) return p;
     changed = true;
     return {

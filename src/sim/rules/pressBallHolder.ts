@@ -50,19 +50,34 @@ export function pressBallHolder(scene: Scene, options?: ReactOptions): Scene {
     : { ...scene, home: { ...opp, players: updatedPlayers } };
 }
 
+/**
+ * Wie stark der Pressing-Picker einen Anstellwinkel von der Innenseite
+ * bevorzugt: pro Welt-Einheit, die ein Kandidat zentraler steht als der
+ * Ballträger, wird die effektive Distanz um diesen Faktor reduziert.
+ * Real soll der ballnahe Stürmer den Pass nach innen verbieten und nicht
+ * von der Außenlinie pressen.
+ */
+const INSIDE_ANGLE_BIAS = 0.4;
+
 function nearestOfRoles(
   players: readonly Player[],
   target: Player,
   roles: readonly RoleCode[],
 ): Player | undefined {
+  const centerSign = Math.sign(50 - target.position.x);
   let best: Player | undefined;
-  let bestDist = Infinity;
+  let bestScore = Infinity;
   for (const p of players) {
     if (!roles.includes(p.role)) continue;
     const d = distance(p.position, target.position);
-    if (d < bestDist) {
+    const insideAdvantage =
+      centerSign === 0
+        ? 0
+        : Math.max(0, (p.position.x - target.position.x) * centerSign);
+    const score = d - insideAdvantage * INSIDE_ANGLE_BIAS;
+    if (score < bestScore) {
       best = p;
-      bestDist = d;
+      bestScore = score;
     }
   }
   return best;

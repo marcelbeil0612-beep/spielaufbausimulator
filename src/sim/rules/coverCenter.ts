@@ -8,10 +8,18 @@ import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
 import { formationContextFor } from './formationContext';
 
 /**
- * Schrittweite, mit der der absichernde Spieler zur Spielfeldmitte (x=50) zieht.
+ * Schrittweite, mit der der absichernde Spieler zur Spielfeldmitte zieht.
  * Wird mit `PRESS_INTENSITY_FACTORS.cover` skaliert.
  */
 export const COVER_CENTER_SHIFT = 4;
+
+/**
+ * Anteil, mit dem der Cover-Zielpunkt aus der reinen Mitte (x=50) Richtung
+ * Ballseite verschoben wird. 0 = starr Mitte, 1 = direkt auf Ball-x.
+ * Real positioniert sich der zweite Mann zwischen Mitte und ballnahem
+ * Halbraum – ein moderater Bias bildet das ab.
+ */
+export const COVER_BALL_SIDE_BIAS = 0.35;
 
 /**
  * Regel 2: Der nicht-pressende Absicherer zieht in Richtung Spielfeldmitte,
@@ -44,11 +52,12 @@ export function coverCenter(scene: Scene, options?: ReactOptions): Scene {
     COVER_CENTER_SHIFT * PRESS_INTENSITY_FACTORS[scene.pressIntensity].cover;
   if (maxShift === 0) return scene;
 
+  const centerTargetX = 50 + (scene.ballPos.x - 50) * COVER_BALL_SIDE_BIAS;
   const ids = new Set(candidates.map((p) => p.id));
   let changed = false;
   const updatedPlayers = opp.players.map((p) => {
     if (!ids.has(p.id)) return p;
-    const dx = 50 - p.position.x;
+    const dx = centerTargetX - p.position.x;
     if (dx === 0) return p;
     const cap =
       options?.dt !== undefined

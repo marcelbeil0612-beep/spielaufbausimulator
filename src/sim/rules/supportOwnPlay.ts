@@ -5,8 +5,6 @@ import type { PitchCoord, Player, RoleCode } from '@/domain/types';
 import { suggestMoves } from '../suggestMoves';
 import type { ReactOptions } from '../reactTo';
 
-type LineBand = 'back' | 'mid' | 'front';
-
 const SUPPORT_SHIFT_FACTORS = {
   lateral: 0.12,
   vertical: 0.08,
@@ -14,13 +12,36 @@ const SUPPORT_SHIFT_FACTORS = {
   offer: 0.38,
 } as const;
 
-const LINE_FACTORS: Record<
-  LineBand,
+/**
+ * Rollen-spezifische Modulation der ballorientierten Mikro-Verschiebung.
+ * Ersetzt die alte 3-Band-Logik (back/mid/front) durch eine Tabelle pro
+ * Rolle. Lesart:
+ *  - `lateral` skaliert das seitliche Mit-Atmen Richtung Ball.
+ *  - `vertical` skaliert das Mit-Aufrücken / Mit-Tiefe-Geben.
+ *
+ * Klassifikation grob:
+ *  - `hold`     : steht eher (IVs, Sechser positionstreu)
+ *  - `breath`   : atmet mit (Achter, Außenverteidiger im Aufbau)
+ *  - `runDeep`  : sucht aktiv Tiefe (Stürmer, Flügel, Zehner)
+ */
+const ROLE_SHIFT_FACTORS: Record<
+  RoleCode,
   { readonly lateral: number; readonly vertical: number }
 > = {
-  back: { lateral: 0.7, vertical: 0.45 },
-  mid: { lateral: 0.95, vertical: 0.7 },
-  front: { lateral: 1.0, vertical: 0.9 },
+  GK: { lateral: 0, vertical: 0 },
+  LCB: { lateral: 0.6, vertical: 0.4 },
+  RCB: { lateral: 0.6, vertical: 0.4 },
+  LB: { lateral: 0.85, vertical: 0.5 },
+  RB: { lateral: 0.85, vertical: 0.5 },
+  CDM: { lateral: 0.9, vertical: 0.55 },
+  LCM: { lateral: 1.0, vertical: 0.85 },
+  RCM: { lateral: 1.0, vertical: 0.85 },
+  LM: { lateral: 0.95, vertical: 0.85 },
+  RM: { lateral: 0.95, vertical: 0.85 },
+  CAM: { lateral: 1.0, vertical: 1.0 },
+  LW: { lateral: 1.0, vertical: 1.0 },
+  RW: { lateral: 1.0, vertical: 1.0 },
+  ST: { lateral: 0.7, vertical: 1.1 },
 };
 
 /**
@@ -44,9 +65,34 @@ export function supportOwnPlay(scene: Scene, options?: ReactOptions): Scene {
     attackerIsHome ? scene : mirroredHomePerspective(scene),
   ).find((move) => move.code === 'support_ball');
 
+  const flight = scene.ballFlight;
+  const progress =
+    flight.travelDuration > 0 ? flight.elapsed / flight.travelDuration : 1;
+
   let changed = false;
   const updatedPlayers = team.players.map((player) => {
-    if (player.role === 'GK' || player.id === holder.id) return player;
+    if (player.role === 'GK') return player;
+    if (player.id === holder.id) {
+      // Empfänger geht dem Ball leicht entgegen (Lösebewegung), nur in der
+      // ersten Flughälfte und auf max ~2 Einheiten begrenzt.
+      const target = receiverApproachTarget(player, flight.start, progress);
+      const next = capMoveTo(player, target, options);
+      if (next.x !== player.position.x || next.y !== player.position.y) {
+        changed = true;
+        return { ...player, position: next };
+      }
+      return player;
+    }
+    if (player.id === flight.fromId) {
+      // Pass-und-Geh: ehemaliger Sender rückt eine Idee Richtung Tor nach.
+      const target = senderFollowUpTarget(player, attackerIsHome);
+      const next = capMoveTo(player, target, options);
+      if (next.x !== player.position.x || next.y !== player.position.y) {
+        changed = true;
+        return { ...player, position: next };
+      }
+      return player;
+    }
     const target = shiftedTarget(player, scene.ballPos);
     const offeredTarget =
       supportSuggestion && supportSuggestion.playerId === player.id
@@ -68,17 +114,67 @@ export function supportOwnPlay(scene: Scene, options?: ReactOptions): Scene {
 }
 
 function shiftedTarget(player: Player, ball: PitchCoord): PitchCoord {
-  const line = LINE_FACTORS[lineBandFor(player.role)];
+  const role = ROLE_SHIFT_FACTORS[player.role];
   const ballNearness = clamp(1 - Math.abs(player.position.x - ball.x) / 50, 0.4, 1);
+  // Restverteidigung: zentrale IVs halten ihre Höhe, wenn der Ball klar
+  // vorne ist (ball.y > 50). Lateral wird gedämpft, vertikal abgeschaltet.
+  const restDefender = isCentralBack(player.role) && ball.y > 50;
+  const lateralScale = restDefender ? 0.5 : 1;
+  const verticalScale = restDefender ? 0 : 1;
   const sidePull =
-    (ball.x - player.position.x) * SUPPORT_SHIFT_FACTORS.lateral * line.lateral * ballNearness;
+    (ball.x - player.position.x) *
+    SUPPORT_SHIFT_FACTORS.lateral *
+    role.lateral *
+    ballNearness *
+    lateralScale;
   const verticalPull =
-    (ball.y - player.position.y) * SUPPORT_SHIFT_FACTORS.vertical * line.vertical * ballNearness;
-  const squeezePull = (50 - player.position.x) * SUPPORT_SHIFT_FACTORS.squeeze;
+    (ball.y - player.position.y) *
+    SUPPORT_SHIFT_FACTORS.vertical *
+    role.vertical *
+    ballNearness *
+    verticalScale;
+  // Außenpositionen halten Breite – kein Sog Richtung Mitte.
+  const squeezePull = isWidePlayer(player.role)
+    ? 0
+    : (50 - player.position.x) * SUPPORT_SHIFT_FACTORS.squeeze;
 
   return {
     x: clamp(player.position.x + sidePull + squeezePull, 0, 100),
     y: clamp(player.position.y + verticalPull, 0, 100),
+  };
+}
+
+const RECEIVER_APPROACH_MAX = 2;
+const RECEIVER_APPROACH_PROGRESS_END = 0.6;
+const SENDER_FOLLOW_UP_DISTANCE = 3;
+
+function senderFollowUpTarget(player: Player, attackerIsHome: boolean): PitchCoord {
+  const direction = attackerIsHome ? 1 : -1;
+  return {
+    x: player.position.x,
+    y: clamp(
+      player.position.y + direction * SENDER_FOLLOW_UP_DISTANCE,
+      0,
+      100,
+    ),
+  };
+}
+
+function receiverApproachTarget(
+  player: Player,
+  passOrigin: PitchCoord,
+  progress: number,
+): PitchCoord {
+  if (progress >= RECEIVER_APPROACH_PROGRESS_END) return player.position;
+  const dx = passOrigin.x - player.position.x;
+  const dy = passOrigin.y - player.position.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist === 0) return player.position;
+  const step = Math.min(RECEIVER_APPROACH_MAX, dist * 0.5);
+  const k = step / dist;
+  return {
+    x: clamp(player.position.x + dx * k, 0, 100),
+    y: clamp(player.position.y + dy * k, 0, 100),
   };
 }
 
@@ -109,27 +205,15 @@ function capMoveTo(
   };
 }
 
-function lineBandFor(role: RoleCode): LineBand {
-  switch (role) {
-    case 'LB':
-    case 'LCB':
-    case 'RCB':
-    case 'RB':
-      return 'back';
-    case 'CDM':
-    case 'LCM':
-    case 'RCM':
-    case 'LM':
-    case 'RM':
-      return 'mid';
-    case 'CAM':
-    case 'LW':
-    case 'ST':
-    case 'RW':
-      return 'front';
-    case 'GK':
-      return 'back';
-  }
+const WIDE_ROLES: readonly RoleCode[] = ['LB', 'RB', 'LW', 'RW'];
+const CENTRAL_BACK_ROLES: readonly RoleCode[] = ['LCB', 'RCB'];
+
+function isWidePlayer(role: RoleCode): boolean {
+  return WIDE_ROLES.includes(role);
+}
+
+function isCentralBack(role: RoleCode): boolean {
+  return CENTRAL_BACK_ROLES.includes(role);
 }
 
 function clamp(v: number, lo: number, hi: number): number {

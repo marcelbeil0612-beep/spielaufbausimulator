@@ -3,6 +3,7 @@ import {
   collectiveShift,
   supportOwnPlay,
   pressBallHolder,
+  pressSecondMan,
   coverCenter,
   compactLine,
   PRESS_DISTANCE,
@@ -26,9 +27,12 @@ export type ReactOptions = {
  */
 export function reactTo(scene: Scene, options?: ReactOptions): Scene {
   return compactLine(
-    coverCenter(
-      pressBallHolder(
-        collectiveShift(supportOwnPlay(scene, options), options),
+    pressSecondMan(
+      coverCenter(
+        pressBallHolder(
+          collectiveShift(supportOwnPlay(scene, options), options),
+          options,
+        ),
         options,
       ),
       options,
