@@ -1,6 +1,7 @@
 import type { Scene } from '@/domain/scene';
 import {
   collectiveShift,
+  supportOwnPlay,
   pressBallHolder,
   coverCenter,
   compactLine,
@@ -26,7 +27,10 @@ export type ReactOptions = {
 export function reactTo(scene: Scene, options?: ReactOptions): Scene {
   return compactLine(
     coverCenter(
-      pressBallHolder(collectiveShift(scene, options), options),
+      pressBallHolder(
+        collectiveShift(supportOwnPlay(scene, options), options),
+        options,
+      ),
       options,
     ),
     options,

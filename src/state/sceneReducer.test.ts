@@ -44,6 +44,7 @@ describe('sceneReducer', () => {
       flying.ballFlight!.duration / 2,
       5,
     );
+    expect(half.home.players).not.toEqual(start.home.players);
     expect(half.away.players).not.toEqual(start.away.players);
   });
 
@@ -54,6 +55,15 @@ describe('sceneReducer', () => {
     const landed = sceneReducer(flying, { type: 'skipFlight' });
     const frozen = sceneReducer(landed, { type: 'advanceTime', dt: 0.5 });
     expect(landed.ballFlight).toBeNull();
+    expect(frozen).toBe(landed);
+  });
+
+  it('eigene Feldspieler frieren nach Passankunft ebenfalls ein', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const landed = sceneReducer(flying, { type: 'skipFlight' });
+    const frozen = sceneReducer(landed, { type: 'advanceTime', dt: 0.5 });
     expect(frozen).toBe(landed);
   });
 

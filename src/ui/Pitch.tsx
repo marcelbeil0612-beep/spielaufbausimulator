@@ -199,9 +199,13 @@ export function Pitch({
 
         {home.players.map((player) => {
           const isHolder = player.id === ballHolderId;
+          const isReceivingActivePass =
+            ballStillTraveling && ballFlight?.toId === player.id;
           const holderDragKind: DragKind = editMode ? 'move' : 'dribble';
           const playerSvg = toSvgCoord(player.position);
-          const facing = isHolder
+          const facing = isReceivingActivePass
+            ? deriveReceiverFacingHome(playerSvg, ballSvg)
+            : isHolder
             ? deriveHolderFacingHome(playerSvg)
             : deriveReceiverFacingHome(playerSvg, ballSvg);
           return (
