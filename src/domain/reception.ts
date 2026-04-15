@@ -32,8 +32,8 @@ export const FIRST_TOUCH_LABELS: Record<FirstTouch, string> = {
  */
 export const RECEPTION_SHIFT_WINDOW_BY_FIRST_TOUCH: Record<FirstTouch, number> = {
   clean: 0,
-  neutral: 0.18,
-  dirty: 0.36,
+  neutral: 0.14,
+  dirty: 0.26,
 };
 
 export function receptionShiftWindow(firstTouch: FirstTouch): number {

@@ -18,8 +18,16 @@ describe('physics: Ballgeschwindigkeit', () => {
 });
 
 describe('physics: ballFlightTime', () => {
-  it('Distanz 18 m bei normal (18 m/s) dauert 1 s', () => {
+  it('Distanz 22 m bei normal (22 m/s) dauert 1 s', () => {
+    const speed = BALL_SPEED_BY_VELOCITY.normal;
     const t = ballFlightTime({ x: 0, y: 0 }, { x: 0, y: 18 }, 'normal');
+    const expected = 18 / speed;
+    expect(expected).toBeLessThan(1);
+    expect(t).toBeCloseTo(expected, 5);
+  });
+
+  it('Distanz 22 m bei normal dauert exakt 1 s', () => {
+    const t = ballFlightTime({ x: 0, y: 0 }, { x: 0, y: 22 }, 'normal');
     expect(t).toBeCloseTo(1, 5);
   });
 
@@ -76,5 +84,10 @@ describe('physics: Plausibilitäts-Check Ball vs. Spieler', () => {
         PLAYER_SHIFT_SPEED_BY_ROLE[role],
       );
     }
+  });
+
+  it('Ball ist bei normal-Pass klar schneller als taktisches Verschieben', () => {
+    const maxPlayerSpeed = Math.max(...Object.values(PLAYER_SHIFT_SPEED_BY_ROLE));
+    expect(BALL_SPEED_BY_VELOCITY.normal).toBeGreaterThan(maxPlayerSpeed * 3);
   });
 });

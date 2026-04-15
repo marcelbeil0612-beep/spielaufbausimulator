@@ -16,9 +16,9 @@ import type { PitchCoord, RoleCode } from './types';
  * phase, daher niedriger als Schuss-Spitzen).
  */
 export const BALL_SPEED_BY_VELOCITY: Record<PassVelocity, number> = {
-  soft: 10,
-  normal: 18,
-  sharp: 25,
+  soft: 12,
+  normal: 22,
+  sharp: 30,
 };
 
 /**

@@ -102,6 +102,29 @@ describe('sceneReducer', () => {
     expect(dirtyAtArrival.ballPos).toEqual(liv.position);
   });
 
+  it('Reception-Fenster schiebt nur kurz und kontrolliert nach', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const dirty = sceneReducer(start, {
+      type: 'pass',
+      targetId: liv.id,
+      firstTouch: 'dirty',
+    });
+    const atArrival = sceneReducer(dirty, {
+      type: 'advanceTime',
+      dt: dirty.ballFlight!.travelDuration,
+    });
+    const afterWindow = sceneReducer(dirty, { type: 'skipFlight' });
+    const atArrivalSt = atArrival.away.players.find((p) => p.role === 'ST')!;
+    const afterWindowSt = afterWindow.away.players.find((p) => p.id === atArrivalSt.id)!;
+    const extraShift = Math.hypot(
+      afterWindowSt.position.x - atArrivalSt.position.x,
+      afterWindowSt.position.y - atArrivalSt.position.y,
+    );
+    expect(extraShift).toBeGreaterThan(0);
+    expect(extraShift).toBeLessThan(2);
+  });
+
   it('dirty first touch bekommt mehr Zusatzdauer als neutral oder clean', () => {
     const start = createInitialScene();
     const liv = start.home.players.find((p) => p.role === 'LCB')!;
