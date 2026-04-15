@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createInitialScene } from '@/domain/scene';
 import { distance } from '@/domain/geometry';
-import { reactTo, PRESS_DISTANCE } from './reactTo';
+import { reactTo } from './reactTo';
 
 function withBallAt(targetRole: 'LCB' | 'RCB' | 'GK') {
   const scene = createInitialScene();
@@ -11,7 +11,7 @@ function withBallAt(targetRole: 'LCB' | 'RCB' | 'GK') {
 }
 
 describe('reactTo (Komposition der Regeln)', () => {
-  it('pressender Stürmer steht nach der Reaktion auf PRESS_DISTANCE zum Ballträger', () => {
+  it('ein gegnerischer Stürmer rückt nach der Reaktion erkennbar auf den Ballträger heraus', () => {
     const before = withBallAt('LCB');
     const after = reactTo(before);
 
@@ -23,20 +23,23 @@ describe('reactTo (Komposition der Regeln)', () => {
 
     const pressor = afterStrikers.find((s, i) => {
       const b = beforeStrikers[i];
-      const d = distance(s.position, holder.position);
-      const moved =
-        s.position.x !== b.position.x || s.position.y !== b.position.y;
-      return moved && Math.abs(d - PRESS_DISTANCE) < 1e-5;
+      return distance(s.position, holder.position) < distance(b.position, holder.position);
     });
     expect(pressor).toBeDefined();
   });
 
-  it('andere Feldspieler als Stürmer bleiben unverändert (Start-Szene ohne Überspielung)', () => {
+  it('kollektives Verschieben bewegt auch Nicht-Stürmer in der Startszene', () => {
     const before = withBallAt('LCB');
     const after = reactTo(before);
-    const nonST = (team: typeof before.away) =>
-      team.players.filter((p) => p.role !== 'ST');
-    expect(nonST(after.away)).toEqual(nonST(before.away));
+    const movedNonStrikers = after.away.players.filter((player, index) => {
+      if (player.role === 'ST' || player.role === 'GK') return false;
+      const previous = before.away.players[index]!;
+      return (
+        player.position.x !== previous.position.x ||
+        player.position.y !== previous.position.y
+      );
+    });
+    expect(movedNonStrikers.length).toBeGreaterThan(0);
     expect(after.home).toEqual(before.home);
   });
 

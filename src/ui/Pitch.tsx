@@ -109,6 +109,8 @@ export function Pitch({
   );
 
   const animating = ballFlight !== null || dribble !== null;
+  const ballStillTraveling =
+    ballFlight !== null && ballFlight.elapsed < ballFlight.travelDuration;
 
   const handlePlayerPointerDown = (
     playerId: string,
@@ -245,7 +247,9 @@ export function Pitch({
               />
             ))
           : null}
-        {ballFlight ? <FlightTrail flight={ballFlight} current={ballSvg} /> : null}
+        {ballStillTraveling && ballFlight ? (
+          <FlightTrail flight={ballFlight} current={ballSvg} />
+        ) : null}
         {dribble ? <DribbleTrail dribble={dribble} current={ballSvg} /> : null}
         {drag ? (
           drag.kind === 'dribble' ? (
@@ -258,7 +262,7 @@ export function Pitch({
             <MoveGhost from={drag.start} to={drag.current} />
           )
         ) : null}
-        <Ball position={ballSvg} nudged={ballFlight === null && dribble === null} />
+        <Ball position={ballSvg} nudged={!ballStillTraveling && dribble === null} />
       </svg>
     </div>
   );

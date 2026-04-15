@@ -44,6 +44,17 @@ describe('sceneReducer', () => {
       flying.ballFlight!.duration / 2,
       5,
     );
+    expect(half.away.players).not.toEqual(start.away.players);
+  });
+
+  it('gegnerische Feldspieler frieren nach Passankunft ein', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
+    const landed = sceneReducer(flying, { type: 'skipFlight' });
+    const frozen = sceneReducer(landed, { type: 'advanceTime', dt: 0.5 });
+    expect(landed.ballFlight).toBeNull();
+    expect(frozen).toBe(landed);
   });
 
   it('advanceTime über die Dauer hinaus schließt den Flug ab', () => {
@@ -53,6 +64,57 @@ describe('sceneReducer', () => {
     const after = sceneReducer(flying, { type: 'advanceTime', dt: 10 });
     expect(after.ballFlight).toBeNull();
     expect(after.ballPos).toEqual(liv.position);
+  });
+
+  it('dirty first touch hält nach Passankunft ein kurzes Nachschiebe-Fenster offen', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const clean = sceneReducer(start, {
+      type: 'pass',
+      targetId: liv.id,
+      firstTouch: 'clean',
+    });
+    const dirty = sceneReducer(start, {
+      type: 'pass',
+      targetId: liv.id,
+      firstTouch: 'dirty',
+    });
+    const cleanAtArrival = sceneReducer(clean, {
+      type: 'advanceTime',
+      dt: clean.ballFlight!.travelDuration,
+    });
+    const dirtyAtArrival = sceneReducer(dirty, {
+      type: 'advanceTime',
+      dt: dirty.ballFlight!.travelDuration,
+    });
+    expect(cleanAtArrival.ballFlight).toBeNull();
+    expect(dirtyAtArrival.ballFlight).not.toBeNull();
+    expect(dirtyAtArrival.ballPos).toEqual(liv.position);
+  });
+
+  it('dirty first touch bekommt mehr Zusatzdauer als neutral oder clean', () => {
+    const start = createInitialScene();
+    const liv = start.home.players.find((p) => p.role === 'LCB')!;
+    const clean = sceneReducer(start, {
+      type: 'pass',
+      targetId: liv.id,
+      firstTouch: 'clean',
+    });
+    const neutral = sceneReducer(start, {
+      type: 'pass',
+      targetId: liv.id,
+      firstTouch: 'neutral',
+    });
+    const dirty = sceneReducer(start, {
+      type: 'pass',
+      targetId: liv.id,
+      firstTouch: 'dirty',
+    });
+    expect(clean.ballFlight!.receptionWindowDuration).toBe(0);
+    expect(neutral.ballFlight!.receptionWindowDuration).toBeGreaterThan(0);
+    expect(dirty.ballFlight!.receptionWindowDuration).toBeGreaterThan(
+      neutral.ballFlight!.receptionWindowDuration,
+    );
   });
 
   it('seekFlight scrubbt proportional zur Flugdauer', () => {

@@ -25,6 +25,8 @@ export type BallFlight = {
   readonly toId: string;
   readonly start: PitchCoord;
   readonly end: PitchCoord;
+  readonly travelDuration: number;
+  readonly receptionWindowDuration: number;
   readonly duration: number;
   readonly elapsed: number;
   readonly baseline: BallFlightBaseline;
@@ -41,8 +43,8 @@ export function ballPositionFromFlight(flight: BallFlight): PitchCoord {
 
 /** Fortschritt des Flugs als Wert in [0, 1]. */
 export function flightProgress(flight: BallFlight): number {
-  if (flight.duration <= 0) return 1;
-  const t = flight.elapsed / flight.duration;
+  if (flight.travelDuration <= 0) return 1;
+  const t = flight.elapsed / flight.travelDuration;
   return t < 0 ? 0 : t > 1 ? 1 : t;
 }
 

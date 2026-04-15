@@ -2,6 +2,7 @@ import type { Scene, SceneSnapshot } from '@/domain/scene';
 import { createInitialScene, findPlayer, snapshotScene } from '@/domain/scene';
 import type { PassAccuracy, PassOptions, PassVelocity } from '@/domain/pass';
 import type { FirstTouch, Reception, Stance } from '@/domain/reception';
+import { receptionShiftWindow } from '@/domain/reception';
 import type { StartVariant } from '@/domain/startVariants';
 import type { PressIntensity } from '@/domain/pressIntensity';
 import type { BallFlight } from '@/domain/ballFlight';
@@ -76,12 +77,15 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         target.position,
         lastPass.velocity,
       );
+      const receptionWindowDuration = receptionShiftWindow(lastReception.firstTouch);
       const flight: BallFlight = {
         fromId: holder.id,
         toId: target.id,
         start: holder.position,
         end: target.position,
-        duration,
+        travelDuration: duration,
+        receptionWindowDuration,
+        duration: duration + receptionWindowDuration,
         elapsed: 0,
         baseline: {
           homePlayers: state.home.players,

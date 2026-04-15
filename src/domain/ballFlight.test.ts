@@ -11,7 +11,9 @@ const FLIGHT: BallFlight = {
   toId: 'b',
   start: { x: 0, y: 0 },
   end: { x: 10, y: 20 },
-  duration: 1,
+  travelDuration: 1,
+  receptionWindowDuration: 0.25,
+  duration: 1.25,
   elapsed: 0.5,
   baseline: { homePlayers: [], awayPlayers: [] },
 };
@@ -27,7 +29,7 @@ describe('flightProgress', () => {
     expect(flightProgress(FLIGHT)).toBeCloseTo(0.5, 6);
   });
   it('Null-Dauer → 1', () => {
-    expect(flightProgress({ ...FLIGHT, duration: 0, elapsed: 0 })).toBe(1);
+    expect(flightProgress({ ...FLIGHT, travelDuration: 0, elapsed: 0 })).toBe(1);
   });
 });
 
@@ -38,6 +40,10 @@ describe('ballPositionFromFlight', () => {
   });
   it('Ende bei elapsed>=duration', () => {
     const p = ballPositionFromFlight({ ...FLIGHT, elapsed: 5 });
+    expect(p).toEqual({ x: 10, y: 20 });
+  });
+  it('bleibt auch im Nachschiebe-Fenster am Zielpunkt', () => {
+    const p = ballPositionFromFlight({ ...FLIGHT, elapsed: 1.1 });
     expect(p).toEqual({ x: 10, y: 20 });
   });
   it('lineare Mittelung bei halber Flugzeit', () => {
@@ -52,6 +58,6 @@ describe('isFlightComplete', () => {
     expect(isFlightComplete(FLIGHT)).toBe(false);
   });
   it('true am Ende', () => {
-    expect(isFlightComplete({ ...FLIGHT, elapsed: 1 })).toBe(true);
+    expect(isFlightComplete({ ...FLIGHT, elapsed: FLIGHT.duration })).toBe(true);
   });
 });
