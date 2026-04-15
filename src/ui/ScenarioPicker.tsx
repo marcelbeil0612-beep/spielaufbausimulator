@@ -7,15 +7,15 @@ type Props = {
 };
 
 /**
- * Select zum Laden vorkonfigurierter Szenarien. Ein ausgewählter Eintrag
+ * Select zum Laden vorkonfigurierter Lehrszenen. Ein ausgewählter Eintrag
  * löst sofort `loadScenario` aus; das Select selbst behält keinen
- * gebundenen Wert, damit das wiederholte Laden des gleichen Szenarios
+ * gebundenen Wert, damit das wiederholte Laden desselben Presets
  * möglich bleibt.
  */
 export function ScenarioPicker({ onLoad, disabled }: Props) {
   return (
     <label className={styles.wrapper}>
-      <span className={styles.label}>Szenario</span>
+      <span className={styles.label}>Lehrszene</span>
       <select
         className={styles.select}
         defaultValue=""
@@ -28,7 +28,7 @@ export function ScenarioPicker({ onLoad, disabled }: Props) {
         }}
       >
         <option value="" disabled>
-          Szenario laden …
+          Preset laden …
         </option>
         {SCENARIOS.map((scenario) => (
           <option key={scenario.id} value={scenario.id} title={scenario.description}>
@@ -36,6 +36,7 @@ export function ScenarioPicker({ onLoad, disabled }: Props) {
           </option>
         ))}
       </select>
+      <span className={styles.hint}>Erneut laden stellt die Ausgangslage wieder her.</span>
     </label>
   );
 }

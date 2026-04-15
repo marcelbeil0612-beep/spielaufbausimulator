@@ -1,7 +1,6 @@
 .wrapper {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  display: inline-grid;
+  gap: 4px;
   color: var(--color-text-muted);
   font-size: 13px;
   font-weight: 600;
@@ -20,6 +19,7 @@
   border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
   border-radius: 999px;
   padding: 6px 14px;
+  min-width: min(100%, 280px);
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
@@ -34,4 +34,10 @@
 .select:focus-visible {
   outline: 2px solid var(--color-rating-open);
   outline-offset: 2px;
+}
+
+.hint {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
 }

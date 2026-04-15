@@ -479,7 +479,7 @@ describe('sceneReducer', () => {
     const start = createInitialScene();
     const next = sceneReducer(start, {
       type: 'loadScenario',
-      scenarioId: 'back-five',
+      scenarioId: 'build-up-low-block',
     });
     expect(next.away.formation).toBe('5-3-2');
   });
@@ -687,8 +687,8 @@ describe('sceneReducer', () => {
       const flying = sceneReducer(start, { type: 'pass', targetId: liv.id });
       const attempted = sceneReducer(flying, {
         type: 'loadScenario',
-        scenarioId: 'low-block',
-      });
+      scenarioId: 'build-up-low-block',
+    });
       expect(attempted).toBe(flying);
     });
 
@@ -741,8 +741,8 @@ describe('sceneReducer', () => {
       const start = createInitialScene();
       const loaded = sceneReducer(start, {
         type: 'loadScenario',
-        scenarioId: 'back-five',
-      });
+      scenarioId: 'build-up-low-block',
+    });
       expect(loaded.away.formation).toBe('5-3-2');
       const undone = sceneReducer(loaded, { type: 'undo' });
       expect(undone.away.formation).toBe(start.away.formation);

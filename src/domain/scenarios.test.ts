@@ -21,13 +21,26 @@ describe('scenarios', () => {
     expect(findScenario('does-not-exist')).toBeUndefined();
   });
 
-  it('tief-stehender-Gegner setzt pressIntensity auf low', () => {
-    const scenario = findScenario('low-block')!;
+  it('Aufbau gegen tiefes Pressing setzt 5-3-2 und low press', () => {
+    const scenario = findScenario('build-up-low-block')!;
     expect(scenario.build().pressIntensity).toBe('low');
+    expect(scenario.build().away.formation).toBe('5-3-2');
   });
 
-  it('Dreierketten-Szenario setzt awayFormation 5-3-2', () => {
-    const scenario = findScenario('back-five')!;
-    expect(scenario.build().away.formation).toBe('5-3-2');
+  it('Sechser unter Druck setzt den Ballhalter auf die 6', () => {
+    const scenario = findScenario('six-under-pressure')!;
+    const scene = scenario.build();
+    const holder = scene.home.players.find((p) => p.id === scene.ballHolderId);
+    expect(holder?.role).toBe('CDM');
+    expect(scene.ballPos).toEqual(holder?.position);
+  });
+
+  it('Offene Verlagerung überschreibt beide gegnerischen Stürmer separat', () => {
+    const scenario = findScenario('open-switch')!;
+    const scene = scenario.build();
+    const strikers = scene.away.players.filter((p) => p.role === 'ST');
+    expect(strikers).toHaveLength(2);
+    expect(strikers[0]?.position).toEqual({ x: 38, y: 30 });
+    expect(strikers[1]?.position).toEqual({ x: 48, y: 32 });
   });
 });

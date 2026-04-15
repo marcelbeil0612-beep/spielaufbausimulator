@@ -46,13 +46,13 @@ export function App() {
       <header className={styles.header}>
         <h1 className={styles.title}>Spielaufbau-Simulator</h1>
         <p className={styles.subtitle}>
-          Lehrfall: 4-3-3 gegen 4-4-2 hohes Pressing · Pass TW → linker
-          Innenverteidiger
+          Lehrszenen für typische Aufbau- und Drucksituationen. Preset laden,
+          direkt spielen und bei Bedarf in Lanes vergleichen.
         </p>
         <ol className={styles.starter} aria-label="So spielst du">
           <li>
-            <strong>Pass-Plan einstellen</strong> (Schärfe, Genauigkeit,
-            Annahme, Stellung)
+            <strong>Lehrszene laden</strong> oder manuell aufbauen, dann
+            Pass-Plan einstellen (Schärfe, Genauigkeit, Annahme, Stellung)
           </li>
           <li>
             <strong>Mitspieler antippen</strong> zum Passen – oder Ballhalter
@@ -136,11 +136,11 @@ export function App() {
           disabled={activeAnim !== null}
         />
         <details className={styles.scenarioInfo}>
-          <summary>Szenarien erklären</summary>
+          <summary>Lehrszenen kurz erklärt</summary>
           <ul>
             {SCENARIOS.map((s) => (
               <li key={s.id}>
-                <strong>{s.label}</strong> — {s.description}
+                <strong>{s.label}</strong> - {s.description}
               </li>
             ))}
           </ul>
