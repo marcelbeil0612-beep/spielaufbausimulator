@@ -19,6 +19,14 @@ export type { PassPreviewOptions } from './simulatePassPreview';
 export { suggestMoves, explainPrimarySuggestion } from './suggestMoves';
 export type { SuggestedMove, SuggestedMoveCode } from './suggestMoves';
 export {
+  assessMoveWindowInScene,
+  assessPassWindow,
+  assessPassWindowInScene,
+  classifyPassWindow,
+  PASS_WINDOW_LABELS,
+} from './passWindow';
+export type { PassWindow } from './passWindow';
+export {
   assessPassLane,
   assessPassLaneInScene,
   LANE_BLOCK_RADIUS,

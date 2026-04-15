@@ -299,6 +299,13 @@
   fill: none;
 }
 
+.passWindowLane {
+  stroke-width: 0.95;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0.22;
+}
+
 .arrowOpen {
   stroke: var(--color-rating-open);
   fill: var(--color-rating-open);
@@ -380,6 +387,18 @@
   stroke: var(--color-rating-open);
   stroke-width: 0.4;
   stroke-dasharray: 0.9 0.6;
+}
+
+.passWindowOpen {
+  stroke: var(--color-rating-open);
+}
+
+.passWindowTight {
+  stroke: var(--color-rating-pressure);
+}
+
+.passWindowBlocked {
+  stroke: var(--color-rating-loss);
 }
 
 .suggestionGhostGroup:hover .suggestionGhostTarget,

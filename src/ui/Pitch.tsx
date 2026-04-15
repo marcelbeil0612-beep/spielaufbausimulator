@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { PitchCoord, Player, Team } from '@/domain/types';
 import type { BallFlight } from '@/domain/ballFlight';
 import type { Dribble } from '@/domain/dribble';
-import type { LineCount, Rating, SuggestedMove } from '@/sim';
+import type { LineCount, PassWindow, Rating, SuggestedMove } from '@/sim';
 import { CoachingOverlay } from './CoachingOverlay';
 import {
   ARROW_INSET,
@@ -36,6 +36,7 @@ type Props = {
   readonly dribble: Dribble | null;
   readonly rating: Rating;
   readonly previewRatings: Readonly<Record<string, Rating>>;
+  readonly previewWindows: Readonly<Record<string, PassWindow>>;
   readonly previewLines: Readonly<Record<string, LineCount>>;
   readonly onPass: (targetId: string) => void;
   readonly onDribble: (targetPos: PitchCoord) => void;
@@ -43,6 +44,7 @@ type Props = {
   readonly editMode: boolean;
   readonly coachingOverlay: boolean;
   readonly suggestions?: readonly SuggestedMove[];
+  readonly suggestionWindows?: Readonly<Record<string, PassWindow>>;
   readonly onApplySuggestion?: (suggestion: SuggestedMove) => void;
   /**
    * Präfix für SVG-interne IDs (z. B. `<marker>`-Pfeilspitzen), damit
@@ -71,6 +73,7 @@ export function Pitch({
   dribble,
   rating,
   previewRatings,
+  previewWindows,
   previewLines,
   onPass,
   onDribble,
@@ -78,6 +81,7 @@ export function Pitch({
   editMode,
   coachingOverlay,
   suggestions,
+  suggestionWindows,
   onApplySuggestion,
   idPrefix = '',
 }: Props) {
@@ -227,6 +231,7 @@ export function Pitch({
               isHolder={isHolder}
               rating={rating}
               previewRating={previewRatings[player.id]}
+              previewWindow={previewWindows[player.id]}
               previewLineCount={previewLines[player.id]}
               holderSvg={holderSvg}
               editMode={editMode}
@@ -260,6 +265,7 @@ export function Pitch({
                 key={s.code}
                 suggestion={s}
                 variant={i === 0 ? 'primary' : 'alternate'}
+                window={suggestionWindows?.[s.code] ?? 'open'}
                 onApply={onApplySuggestion}
               />
             ))
@@ -406,10 +412,12 @@ function DribbleGhost({
 function SuggestionGhost({
   suggestion,
   variant,
+  window,
   onApply,
 }: {
   readonly suggestion: SuggestedMove;
   readonly variant: 'primary' | 'alternate';
+  readonly window: PassWindow;
   readonly onApply?: ((s: SuggestedMove) => void) | undefined;
 }) {
   const from = toSvgCoord(suggestion.from);
@@ -422,6 +430,12 @@ function SuggestionGhost({
     variant === 'primary'
       ? `${styles.suggestionGhostGroup} ${styles.suggestionGhostPrimary}`
       : `${styles.suggestionGhostGroup} ${styles.suggestionGhostAlternate}`;
+  const windowClass =
+    window === 'open'
+      ? styles.passWindowOpen
+      : window === 'tight'
+        ? styles.passWindowTight
+        : styles.passWindowBlocked;
   const label =
     variant === 'primary'
       ? `Beste Empfehlung übernehmen: ${suggestion.title}`
@@ -441,14 +455,14 @@ function SuggestionGhost({
       }}
     >
       <line
-        className={styles.suggestionGhostLine}
+        className={`${styles.suggestionGhostLine} ${windowClass}`}
         x1={from.cx}
         y1={from.cy}
         x2={to.cx}
         y2={to.cy}
       />
       <circle
-        className={styles.suggestionGhostTarget}
+        className={`${styles.suggestionGhostTarget} ${windowClass}`}
         cx={to.cx}
         cy={to.cy}
         r={variant === 'primary' ? 2.6 : 2.0}
@@ -541,6 +555,7 @@ type HomeMarkerProps = {
   readonly isHolder: boolean;
   readonly rating: Rating;
   readonly previewRating: Rating | undefined;
+  readonly previewWindow: PassWindow | undefined;
   readonly previewLineCount: LineCount | undefined;
   readonly holderSvg: { cx: number; cy: number } | undefined;
   readonly editMode: boolean;
@@ -588,6 +603,7 @@ function HomeMarker({
   isHolder,
   rating,
   previewRating,
+  previewWindow,
   previewLineCount,
   holderSvg,
   editMode,
@@ -708,6 +724,7 @@ function HomeMarker({
           from={holderSvg}
           to={{ cx, cy }}
           rating={previewRating}
+          window={previewWindow ?? 'open'}
           lines={lines}
           idPrefix={idPrefix}
         />
@@ -778,12 +795,14 @@ function PassArrow({
   from,
   to,
   rating,
+  window,
   lines,
   idPrefix,
 }: {
   readonly from: { cx: number; cy: number };
   readonly to: { cx: number; cy: number };
   readonly rating: Rating;
+  readonly window: PassWindow;
   readonly lines: LineCount;
   readonly idPrefix: string;
 }) {
@@ -801,9 +820,22 @@ function PassArrow({
   const y2 = to.cy - ny * ARROW_INSET;
   const mx = (x1 + x2) / 2;
   const my = (y1 + y2) / 2;
+  const windowClass =
+    window === 'open'
+      ? styles.passWindowOpen
+      : window === 'tight'
+        ? styles.passWindowTight
+        : styles.passWindowBlocked;
 
   return (
     <g className={styles.passArrowGroup}>
+      <line
+        className={`${styles.passWindowLane} ${windowClass}`}
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+      />
       <line
         className={`${styles.passArrow} ${ARROW_CLASSES[rating]}`}
         x1={x1}

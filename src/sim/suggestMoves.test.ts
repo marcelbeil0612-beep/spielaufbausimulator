@@ -350,4 +350,17 @@ describe('explainPrimarySuggestion', () => {
     };
     expect(explainPrimarySuggestion(s, scene)).toMatch(/Klatschball|Ablage/);
   });
+
+  it('ergänzt die Hauptbegründung kompakt um das Passfenster', () => {
+    const scene = createInitialScene();
+    const s: SuggestedMove = {
+      playerId: 'x',
+      from: { x: 50, y: 40 },
+      to: { x: 50, y: 58 },
+      code: 'between_lines',
+      title: 't',
+      reason: 'r',
+    };
+    expect(explainPrimarySuggestion(s, scene)).toMatch(/Linie offen|Passweg eng|Passweg verdeckt/);
+  });
 });

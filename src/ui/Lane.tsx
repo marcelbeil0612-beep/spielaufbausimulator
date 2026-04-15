@@ -9,13 +9,16 @@ import { StancePicker } from './StancePicker';
 import { OpponentPicker } from './OpponentPicker';
 import { PressIntensityPicker } from './PressIntensityPicker';
 import {
+  assessMoveWindowInScene,
+  assessPassWindowInScene,
   explainPrimarySuggestion,
   explainRating,
   linesBroken,
+  PASS_WINDOW_LABELS,
   simulatePassPreview,
   suggestMoves,
 } from '@/sim';
-import type { LineCount, Rating, SuggestedMove } from '@/sim';
+import type { LineCount, PassWindow, Rating, SuggestedMove } from '@/sim';
 import { getLines } from '@/domain/lines';
 import type { Lane as LaneState } from '@/state';
 import type { SceneAction } from '@/state';
@@ -57,6 +60,14 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
       .filter((p) => p.id !== scene.ballHolderId)
       .map((p) => [p.id, simulatePassPreview(scene, p.id)]),
   );
+  const previewWindows: Record<string, PassWindow> = Object.fromEntries(
+    scene.home.players
+      .filter((p) => p.id !== scene.ballHolderId)
+      .flatMap((p) => {
+        const window = assessPassWindowInScene(scene, p.id);
+        return window ? [[p.id, window] as const] : [];
+      }),
+  );
   const previewLines: Record<string, LineCount> = holder
     ? Object.fromEntries(
         scene.home.players
@@ -67,6 +78,12 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
           ]),
       )
     : {};
+  const suggestionWindows: Record<string, PassWindow> = Object.fromEntries(
+    suggestions.flatMap((s) => {
+      const window = assessMoveWindowInScene(scene, s.to);
+      return window ? [[s.code, window] as const] : [];
+    }),
+  );
 
   const laneClasses = [
     styles.lane,
@@ -249,10 +266,12 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
           dribble={scene.dribble}
           rating={rating}
           previewRatings={previewRatings}
+          previewWindows={previewWindows}
           previewLines={previewLines}
           editMode={editMode}
           coachingOverlay={coachingOverlay}
           suggestions={suggestions}
+          suggestionWindows={suggestionWindows}
           onApplySuggestion={applySuggestion}
           onPass={(targetId) => dispatch({ type: 'pass', targetId })}
           onDribble={(targetPos) => dispatch({ type: 'dribble', targetPos })}
@@ -292,7 +311,7 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
                   <span className={styles.suggestionReason}>
                     {isPrimary
                       ? explainPrimarySuggestion(s, scene)
-                      : 'Weitere ruhige Anschlussoption.'}
+                      : `${PASS_WINDOW_LABELS[suggestionWindows[s.code] ?? 'open']}. Weitere ruhige Anschlussoption.`}
                   </span>
                 </button>
               </li>

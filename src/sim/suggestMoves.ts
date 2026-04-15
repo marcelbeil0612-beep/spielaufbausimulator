@@ -4,6 +4,7 @@ import { getLines } from '@/domain/lines';
 import { distance } from '@/domain/geometry';
 import type { PitchCoord, Player } from '@/domain/types';
 import { PRESSURE_RADIUS } from './evaluate';
+import { assessMoveWindowInScene, PASS_WINDOW_LABELS } from './passWindow';
 import {
   deriveReceiverCueHome,
   deriveReceiverFacingHome,
@@ -99,38 +100,65 @@ export function explainPrimarySuggestion(
   scene: Scene,
 ): string {
   const context = deriveSuggestionContext(scene);
+  const window = assessMoveWindowInScene(scene, s.to);
   if (s.code === 'support_ball') {
     const holder = findPlayer(scene, scene.ballHolderId);
     const dAfter = holder ? distance(s.to, holder.position) : Infinity;
     if (context && context.firstTouch === 'dirty' && context.pressers >= 1) {
-      return 'Unter Druck eher auf Klatschball oder sichere Ablage – kurze Unterstützung hilft sofort.';
+      return withWindowLabel(
+        'Unter Druck eher auf Klatschball oder sichere Ablage – kurze Unterstützung hilft sofort.',
+        window,
+      );
     }
     if (
       context &&
       (context.cue.continuation === 'set' || context.cue.continuation === 'back')
     ) {
-      return context.pressers >= 1 || context.firstTouch === 'dirty'
+      return withWindowLabel(context.pressers >= 1 || context.firstTouch === 'dirty'
         ? 'Unter Druck eher auf Klatschball oder sichere Ablage – kurze Unterstützung hilft sofort.'
-        : 'Der Empfänger steht eher auf Klatsch- oder Sicherheitsball – die kurze Stafette bleibt naheliegend.';
+        : 'Der Empfänger steht eher auf Klatsch- oder Sicherheitsball – die kurze Stafette bleibt naheliegend.',
+        window,
+      );
     }
     if (dAfter <= 12) {
-      return 'Gibt dem Ballhalter sofort eine kurze, sichere Anspielstation.';
+      return withWindowLabel(
+        'Gibt dem Ballhalter sofort eine kurze, sichere Anspielstation.',
+        window,
+      );
     }
-    return 'Verkürzt den Abstand zum Ball und stabilisiert die Staffelung.';
+    return withWindowLabel(
+      'Verkürzt den Abstand zum Ball und stabilisiert die Staffelung.',
+      window,
+    );
   }
   if (context?.cue.continuation === 'turn' && context.cue.bodyShape !== 'closed') {
-    return 'Der Empfänger ist eher offen zum Aufdrehen – der Raum zwischen den Linien wird direkt nutzbar.';
+    return withWindowLabel(
+      'Der Empfänger ist eher offen zum Aufdrehen – der Raum zwischen den Linien wird direkt nutzbar.',
+      window,
+    );
   }
   if (context?.cue.continuation === 'carry_sideways') {
-    return 'Seitliches Mitnehmen liegt nahe – der Zwischenlinienraum bleibt als nächster Anschluss gut besetzt.';
+    return withWindowLabel(
+      'Seitliches Mitnehmen liegt nahe – der Zwischenlinienraum bleibt als nächster Anschluss gut besetzt.',
+      window,
+    );
   }
   if (context?.cue.continuation === 'back' && context.pressers >= 1) {
-    return 'Unter Druck bleibt die sichere Staffelung wichtig – der Zwischenlinienraum hält die Folgeaktion trotzdem offen.';
+    return withWindowLabel(
+      'Unter Druck bleibt die sichere Staffelung wichtig – der Zwischenlinienraum hält die Folgeaktion trotzdem offen.',
+      window,
+    );
   }
   if (Math.abs(s.to.x - 50) < 8) {
-    return 'Besetzt zentral den Raum zwischen Mittelfeld und Abwehr – direkt progressiv.';
+    return withWindowLabel(
+      'Besetzt zentral den Raum zwischen Mittelfeld und Abwehr – direkt progressiv.',
+      window,
+    );
   }
-  return 'Besetzt den freien Raum hinter dem gegnerischen Mittelfeld.';
+  return withWindowLabel(
+    'Besetzt den freien Raum hinter dem gegnerischen Mittelfeld.',
+    window,
+  );
 }
 
 /**
@@ -334,4 +362,9 @@ function interpolateSvg(
     cx: from.cx + (to.cx - from.cx) * t,
     cy: from.cy + (to.cy - from.cy) * t,
   };
+}
+
+function withWindowLabel(base: string, window: ReturnType<typeof assessMoveWindowInScene>): string {
+  if (!window) return base;
+  return `${base} ${PASS_WINDOW_LABELS[window]}.`;
 }
