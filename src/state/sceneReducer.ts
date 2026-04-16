@@ -1,6 +1,8 @@
 import type { Scene, SceneSnapshot } from '@/domain/scene';
 import { createInitialScene, findPlayer, snapshotScene } from '@/domain/scene';
 import type { PassAccuracy, PassOptions, PassVelocity } from '@/domain/pass';
+import type { LeadPreset } from '@/domain/leadPass';
+import { leadOffsetFor } from '@/domain/leadPass';
 import type { FirstTouch, Reception, Stance } from '@/domain/reception';
 import { receptionShiftWindow } from '@/domain/reception';
 import type { StartVariant } from '@/domain/startVariants';
@@ -30,6 +32,7 @@ export type SceneAction =
       readonly accuracy?: PassAccuracy;
       readonly firstTouch?: FirstTouch;
       readonly stance?: Stance;
+      readonly lead?: PitchCoord;
     }
   | {
       readonly type: 'dribble';
@@ -52,6 +55,7 @@ export type SceneAction =
   | { readonly type: 'setPassVelocity'; readonly velocity: PassVelocity }
   | { readonly type: 'setPassAccuracy'; readonly accuracy: PassAccuracy }
   | { readonly type: 'setStancePlan'; readonly stance: Stance }
+  | { readonly type: 'setLeadPlan'; readonly leadPlan: LeadPreset }
   | { readonly type: 'setPressIntensity'; readonly pressIntensity: PressIntensity }
   | { readonly type: 'setAwayFormation'; readonly awayFormation: FormationPattern };
 
@@ -72,9 +76,21 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         firstTouch: action.firstTouch ?? state.firstTouchPlan,
         stance: action.stance ?? state.stancePlan,
       };
+      const attackerIsHome = state.home.players.some((p) => p.id === holder.id);
+      const lead =
+        action.lead ??
+        (state.leadPlan !== 'none'
+          ? leadOffsetFor(state.leadPlan, attackerIsHome)
+          : undefined);
+      const end = lead
+        ? clampPitch({
+            x: target.position.x + lead.x,
+            y: target.position.y + lead.y,
+          })
+        : target.position;
       const duration = ballFlightTime(
         holder.position,
-        target.position,
+        end,
         lastPass.velocity,
       );
       const receptionWindowDuration = receptionShiftWindow(lastReception.firstTouch);
@@ -82,7 +98,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         fromId: holder.id,
         toId: target.id,
         start: holder.position,
-        end: target.position,
+        end,
         travelDuration: duration,
         receptionWindowDuration,
         duration: duration + receptionWindowDuration,
@@ -92,13 +108,12 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
           awayPlayers: state.away.players,
         },
       };
-      const attackerIsHome = state.home.players.some((p) => p.id === holder.id);
       const opponents = attackerIsHome
         ? state.away.players
         : state.home.players;
       const lastPassLane = assessPassLane(
         holder.position,
-        target.position,
+        end,
         opponents.map((p) => p.position),
       );
       return {
@@ -224,6 +239,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.stancePlan,
         state.pressIntensity,
         state.away.formation,
+        state.leadPlan,
       );
       return {
         ...next,
@@ -240,6 +256,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.stancePlan,
         state.pressIntensity,
         state.away.formation,
+        state.leadPlan,
       );
       return {
         ...next,
@@ -274,6 +291,13 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         stancePlan: action.stance,
         history: pushHistory(state.history, snapshotScene(state)),
       };
+    case 'setLeadPlan':
+      if (state.leadPlan === action.leadPlan) return state;
+      return {
+        ...state,
+        leadPlan: action.leadPlan,
+        history: pushHistory(state.history, snapshotScene(state)),
+      };
     case 'setPressIntensity':
       if (state.pressIntensity === action.pressIntensity) return state;
       return {
@@ -291,6 +315,7 @@ export function sceneReducer(state: Scene, action: SceneAction): Scene {
         state.stancePlan,
         state.pressIntensity,
         action.awayFormation,
+        state.leadPlan,
       );
       return {
         ...next,

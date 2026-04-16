@@ -2,6 +2,7 @@ import type { RoleCode } from '@/domain/types';
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { maxShiftDistance } from '@/domain/physics';
+import { anticipatedBallPos } from '@/domain/ballFlight';
 import type { Player, PitchCoord } from '@/domain/types';
 import type { ReactOptions } from '../reactTo';
 
@@ -71,7 +72,13 @@ export function collectiveShift(scene: Scene, options?: ReactOptions): Scene {
 }
 
 function currentBallReference(scene: Scene, fallback: PitchCoord): PitchCoord {
-  if (scene.ballFlight || scene.dribble) {
+  // Während eines Flugs antizipiert das verschiebende Team die Ballposition
+  // (ballorientiertes Verschieben läuft dem Ball leicht voraus, nicht
+  // hinterher). Beim Dribbling bleibt die aktuelle Ballposition Referenz.
+  if (scene.ballFlight) {
+    return anticipatedBallPos(scene.ballFlight, scene.ballPos);
+  }
+  if (scene.dribble) {
     return scene.ballPos;
   }
   return fallback;

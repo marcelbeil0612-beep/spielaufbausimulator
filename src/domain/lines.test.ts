@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { FORMATION_4_3_3, FORMATION_4_4_2 } from './formations';
 import { teamFromFormation } from './team';
-import { getLines } from './lines';
+import { getLines, secondLastDefenderY } from './lines';
 
 describe('getLines', () => {
   it('4-3-3 Heim: defense < midfield < attack', () => {
@@ -42,5 +42,27 @@ describe('getLines', () => {
     expect(a.defense).toBeCloseTo(100 - h.defense, 5);
     expect(a.midfield).toBeCloseTo(100 - h.midfield, 5);
     expect(a.attack).toBeCloseTo(100 - h.attack, 5);
+  });
+});
+
+describe('secondLastDefenderY', () => {
+  it('Auswärts (goal=100): zweit-höchstes y unter Feldspielern', () => {
+    const away = teamFromFormation(FORMATION_4_3_3, 'away');
+    const y = secondLastDefenderY(away, 100);
+    const fieldYsDesc = away.players
+      .filter((p) => p.role !== 'GK')
+      .map((p) => p.position.y)
+      .sort((a, b) => b - a);
+    expect(y).toBeCloseTo(fieldYsDesc[1]!, 5);
+  });
+
+  it('Heim (goal=0): zweit-kleinstes y unter Feldspielern', () => {
+    const home = teamFromFormation(FORMATION_4_3_3, 'home');
+    const y = secondLastDefenderY(home, 0);
+    const fieldYsAsc = home.players
+      .filter((p) => p.role !== 'GK')
+      .map((p) => p.position.y)
+      .sort((a, b) => a - b);
+    expect(y).toBeCloseTo(fieldYsAsc[1]!, 5);
   });
 });

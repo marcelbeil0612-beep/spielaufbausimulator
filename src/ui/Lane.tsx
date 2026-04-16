@@ -5,6 +5,7 @@ import { VariantPicker } from './VariantPicker';
 import { FirstTouchPicker } from './FirstTouchPicker';
 import { PassVelocityPicker } from './PassVelocityPicker';
 import { PassAccuracyPicker } from './PassAccuracyPicker';
+import { LeadPicker } from './LeadPicker';
 import { StancePicker } from './StancePicker';
 import { OpponentPicker } from './OpponentPicker';
 import { PressIntensityPicker } from './PressIntensityPicker';
@@ -134,6 +135,12 @@ export function Lane({ lane, dispatch, isActive, onActivate, onRemove }: Props) 
               value={scene.passPlan.accuracy}
               onChange={(accuracy) =>
                 dispatch({ type: 'setPassAccuracy', accuracy })
+              }
+            />
+            <LeadPicker
+              value={scene.leadPlan}
+              onChange={(leadPlan) =>
+                dispatch({ type: 'setLeadPlan', leadPlan })
               }
             />
           </div>

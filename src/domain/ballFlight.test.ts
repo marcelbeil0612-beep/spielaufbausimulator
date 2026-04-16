@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  anticipatedBallPos,
   ballPositionFromFlight,
   flightProgress,
   isFlightComplete,
+  REACTION_LAG,
   type BallFlight,
 } from './ballFlight';
 
@@ -59,5 +61,35 @@ describe('isFlightComplete', () => {
   });
   it('true am Ende', () => {
     expect(isFlightComplete({ ...FLIGHT, elapsed: FLIGHT.duration })).toBe(true);
+  });
+});
+
+describe('anticipatedBallPos', () => {
+  it('ohne Flug: Fallback wird zurückgegeben', () => {
+    const fallback = { x: 12, y: 34 };
+    expect(anticipatedBallPos(null, fallback)).toEqual(fallback);
+  });
+
+  it('läuft dem Ball um REACTION_LAG voraus', () => {
+    const predicted = anticipatedBallPos(FLIGHT, { x: 0, y: 0 });
+    const now = ballPositionFromFlight(FLIGHT);
+    // Erwartung: predicted liegt zwischen `now` und `flight.end`.
+    expect(predicted.x).toBeGreaterThan(now.x);
+    expect(predicted.y).toBeGreaterThan(now.y);
+    expect(predicted.x).toBeLessThanOrEqual(FLIGHT.end.x + 0.0001);
+    expect(predicted.y).toBeLessThanOrEqual(FLIGHT.end.y + 0.0001);
+    // Vorhersage entspricht exakt `elapsed + REACTION_LAG` am Flugpfad.
+    const expectedK =
+      Math.min(FLIGHT.elapsed + REACTION_LAG, FLIGHT.travelDuration) /
+      FLIGHT.travelDuration;
+    expect(predicted.x).toBeCloseTo(
+      FLIGHT.start.x + (FLIGHT.end.x - FLIGHT.start.x) * expectedK,
+      6,
+    );
+  });
+
+  it('kappt an flight.end, wenn Vorhersage über Flugdauer hinausgeht', () => {
+    const lateFlight = { ...FLIGHT, elapsed: FLIGHT.travelDuration };
+    expect(anticipatedBallPos(lateFlight, { x: 0, y: 0 })).toEqual(FLIGHT.end);
   });
 });

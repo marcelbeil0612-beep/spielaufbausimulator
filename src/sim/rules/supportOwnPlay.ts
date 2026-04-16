@@ -73,8 +73,23 @@ export function supportOwnPlay(scene: Scene, options?: ReactOptions): Scene {
   const updatedPlayers = team.players.map((player) => {
     if (player.role === 'GK') return player;
     if (player.id === holder.id) {
-      // Empfänger geht dem Ball leicht entgegen (Lösebewegung), nur in der
-      // ersten Flughälfte und auf max ~2 Einheiten begrenzt.
+      // Lead-Pass erkannt, wenn `flight.end` abweicht von der Baseline-
+      // Position des Empfängers (== `player.position`, da Baseline jede
+      // Tick rehydriert wird). Dann läuft der Empfänger in den Raum
+      // Richtung `flight.end`; sonst klassische Lösebewegung zum Ball.
+      const isLeadPass =
+        flight.end.x !== player.position.x || flight.end.y !== player.position.y;
+      if (isLeadPass) {
+        // Sprintlauf in den Raum: Progress-Skalierung reicht als Glättung,
+        // die 0.55-Kappung aus `capMoveTo` würde den Lauf unrealistisch
+        // bremsen (Sprint > taktisches Verschieben).
+        const next = receiverRunTarget(player, flight.end, progress);
+        if (next.x !== player.position.x || next.y !== player.position.y) {
+          changed = true;
+          return { ...player, position: next };
+        }
+        return player;
+      }
       const target = receiverApproachTarget(player, flight.start, progress);
       const next = capMoveTo(player, target, options);
       if (next.x !== player.position.x || next.y !== player.position.y) {
@@ -146,6 +161,7 @@ function shiftedTarget(player: Player, ball: PitchCoord): PitchCoord {
 
 const RECEIVER_APPROACH_MAX = 2;
 const RECEIVER_APPROACH_PROGRESS_END = 0.6;
+const RECEIVER_RUN_MAX = 12;
 const SENDER_FOLLOW_UP_DISTANCE = 3;
 
 function senderFollowUpTarget(player: Player, attackerIsHome: boolean): PitchCoord {
@@ -171,6 +187,31 @@ function receiverApproachTarget(
   const dist = Math.hypot(dx, dy);
   if (dist === 0) return player.position;
   const step = Math.min(RECEIVER_APPROACH_MAX, dist * 0.5);
+  const k = step / dist;
+  return {
+    x: clamp(player.position.x + dx * k, 0, 100),
+    y: clamp(player.position.y + dy * k, 0, 100),
+  };
+}
+
+/**
+ * Lead-Pass-Variante: der Empfänger läuft über die gesamte Flugdauer
+ * linear Richtung `flight.end`. Basis ist immer die Baseline (Rehydrat
+ * durch advanceFlight), daher Fortschritt direkt als Anteil. Schritt
+ * ist auf `RECEIVER_RUN_MAX` gekappt, damit unrealistisch weite
+ * „Fernläufe" nicht allein aus einem Pass entstehen.
+ */
+function receiverRunTarget(
+  player: Player,
+  runEnd: PitchCoord,
+  progress: number,
+): PitchCoord {
+  const dx = runEnd.x - player.position.x;
+  const dy = runEnd.y - player.position.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist === 0) return player.position;
+  const t = progress < 0 ? 0 : progress > 1 ? 1 : progress;
+  const step = Math.min(RECEIVER_RUN_MAX, dist) * t;
   const k = step / dist;
   return {
     x: clamp(player.position.x + dx * k, 0, 100),

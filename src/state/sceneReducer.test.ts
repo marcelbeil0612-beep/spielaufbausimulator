@@ -789,4 +789,71 @@ describe('sceneReducer', () => {
       expect(reset.lastPassLane).toBeNull();
     });
   });
+
+  describe('leadPlan', () => {
+    it('setLeadPlan ändert die aktive Voreinstellung', () => {
+      const start = createInitialScene();
+      expect(start.leadPlan).toBe('none');
+      const next = sceneReducer(start, {
+        type: 'setLeadPlan',
+        leadPlan: 'short-ahead',
+      });
+      expect(next.leadPlan).toBe('short-ahead');
+    });
+
+    it('pass nutzt leadPlan als Lead-Offset, wenn die Action keinen expliziten lead angibt', () => {
+      const start = createInitialScene();
+      const withLead = sceneReducer(start, {
+        type: 'setLeadPlan',
+        leadPlan: 'short-ahead',
+      });
+      const liv = withLead.home.players.find((p) => p.role === 'LCB')!;
+      const passed = sceneReducer(withLead, { type: 'pass', targetId: liv.id });
+      // short-ahead verschiebt den Zielpunkt um +4 in y-Richtung.
+      expect(passed.ballFlight!.end.y).toBeCloseTo(liv.position.y + 4, 5);
+      expect(passed.ballFlight!.end.x).toBeCloseTo(liv.position.x, 5);
+    });
+
+    it('expliziter lead in der pass-Action schlägt leadPlan', () => {
+      const start = createInitialScene();
+      const withLead = sceneReducer(start, {
+        type: 'setLeadPlan',
+        leadPlan: 'far-ahead',
+      });
+      const liv = withLead.home.players.find((p) => p.role === 'LCB')!;
+      const passed = sceneReducer(withLead, {
+        type: 'pass',
+        targetId: liv.id,
+        lead: { x: 0, y: 2 },
+      });
+      expect(passed.ballFlight!.end.y).toBeCloseTo(liv.position.y + 2, 5);
+    });
+
+    it('leadPlan "none" lässt das Ziel exakt auf dem Empfänger', () => {
+      const start = createInitialScene();
+      const liv = start.home.players.find((p) => p.role === 'LCB')!;
+      const passed = sceneReducer(start, { type: 'pass', targetId: liv.id });
+      expect(passed.ballFlight!.end).toEqual(liv.position);
+    });
+
+    it('bleibt nach reset/setVariant/setAwayFormation erhalten', () => {
+      const start = createInitialScene();
+      const withLead = sceneReducer(start, {
+        type: 'setLeadPlan',
+        leadPlan: 'diagonal-right',
+      });
+      const resetScene = sceneReducer(withLead, { type: 'reset' });
+      expect(resetScene.leadPlan).toBe('diagonal-right');
+      const variantScene = sceneReducer(withLead, {
+        type: 'setVariant',
+        variant: 'wide',
+      });
+      expect(variantScene.leadPlan).toBe('diagonal-right');
+      const formationScene = sceneReducer(withLead, {
+        type: 'setAwayFormation',
+        awayFormation: '5-3-2',
+      });
+      expect(formationScene.leadPlan).toBe('diagonal-right');
+    });
+  });
 });

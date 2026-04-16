@@ -51,3 +51,35 @@ export function flightProgress(flight: BallFlight): number {
 export function isFlightComplete(flight: BallFlight): boolean {
   return flight.elapsed >= flight.duration;
 }
+
+/**
+ * Antizipations-Fenster des gegnerischen Teams: Die pressenden Spieler
+ * reagieren nicht auf die aktuelle Ballposition, sondern auf die um
+ * `REACTION_LAG` Sekunden extrapolierte Position. So laufen sie dem Ball
+ * ein Stück voraus statt hinterher. Wert bewusst sub-Sekunde gehalten,
+ * damit die Vorwegnahme spürbar aber nicht übermenschlich wirkt.
+ */
+export const REACTION_LAG = 0.4;
+
+/**
+ * Extrapolierte Ballposition für das antizipierende Team. Ohne laufenden
+ * Flug Identität zu `fallback`; während des Flugs die Ballposition um
+ * `REACTION_LAG` Sekunden nach vorn – gekappt an `flight.end`, damit das
+ * Team nicht über den Ziel-Treffpunkt hinaus läuft.
+ */
+export function anticipatedBallPos(
+  flight: BallFlight | null,
+  fallback: PitchCoord,
+): PitchCoord {
+  if (!flight) return fallback;
+  if (flight.travelDuration <= 0) return flight.end;
+  const tPredicted = Math.min(
+    flight.elapsed + REACTION_LAG,
+    flight.travelDuration,
+  );
+  const k = tPredicted / flight.travelDuration;
+  return {
+    x: flight.start.x + (flight.end.x - flight.start.x) * k,
+    y: flight.start.y + (flight.end.y - flight.start.y) * k,
+  };
+}

@@ -2,6 +2,7 @@ import type { Scene } from '@/domain/scene';
 import {
   collectiveShift,
   supportOwnPlay,
+  runDeep,
   pressBallHolder,
   pressSecondMan,
   coverCenter,
@@ -30,7 +31,10 @@ export function reactTo(scene: Scene, options?: ReactOptions): Scene {
     pressSecondMan(
       coverCenter(
         pressBallHolder(
-          collectiveShift(supportOwnPlay(scene, options), options),
+          collectiveShift(
+            runDeep(supportOwnPlay(scene, options), options),
+            options,
+          ),
           options,
         ),
         options,

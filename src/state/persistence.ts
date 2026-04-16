@@ -1,6 +1,7 @@
 import type { Scene } from '@/domain/scene';
 import { createInitialScene, findPlayer } from '@/domain/scene';
 import { DEFAULT_PRESS_INTENSITY } from '@/domain/pressIntensity';
+import { DEFAULT_LEAD_PRESET, LEAD_PRESETS } from '@/domain/leadPass';
 
 export const STORAGE_KEY = 'spielaufbau:scene:v3';
 export const LEGACY_STORAGE_KEY_V2 = 'spielaufbau:scene:v2';
@@ -102,6 +103,7 @@ function migrate(scene: Scene): Scene {
   const next: Scene = {
     ...scene,
     pressIntensity: scene.pressIntensity ?? DEFAULT_PRESS_INTENSITY,
+    leadPlan: isValidLeadPlan(scene.leadPlan) ? scene.leadPlan : DEFAULT_LEAD_PRESET,
     ballPos: scene.ballPos ?? fallbackBallPos,
     ballFlight: scene.ballFlight ?? null,
     dribble: scene.dribble ?? null,
@@ -144,6 +146,13 @@ function isScene(value: unknown): value is Scene {
 
 function isPressIntensity(value: unknown): boolean {
   return value === undefined || value === 'high' || value === 'mid' || value === 'low';
+}
+
+function isValidLeadPlan(value: unknown): value is (typeof LEAD_PRESETS)[number] {
+  return (
+    typeof value === 'string' &&
+    (LEAD_PRESETS as readonly string[]).includes(value)
+  );
 }
 
 function isPitchCoord(value: unknown): boolean {

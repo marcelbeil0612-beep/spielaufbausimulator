@@ -1,5 +1,6 @@
 export { collectiveShift } from './collectiveShift';
 export { supportOwnPlay } from './supportOwnPlay';
+export { runDeep } from './runDeep';
 export { pressBallHolder, PRESS_DISTANCE } from './pressBallHolder';
 export { coverCenter, COVER_CENTER_SHIFT } from './coverCenter';
 export { pressSecondMan, SECOND_MAN_PRESS_FACTOR } from './pressSecondMan';

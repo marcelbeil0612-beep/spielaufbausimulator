@@ -38,4 +38,26 @@ describe('supportOwnPlay', () => {
       Math.abs(far.position.x - farBefore.position.x),
     );
   });
+
+  it('Lead-Pass: Empfänger läuft Richtung flight.end in den Raum', () => {
+    const scene = createInitialScene();
+    const st = scene.home.players.find((p) => p.role === 'ST')!;
+    const lead = { x: 0, y: 6 };
+    const flying = sceneReducer(scene, {
+      type: 'pass',
+      targetId: st.id,
+      lead,
+    });
+    const flight = flying.ballFlight!;
+    const endY = flight.end.y;
+    expect(endY).toBeGreaterThan(st.position.y);
+
+    const shifted = supportOwnPlay({
+      ...flying,
+      ballFlight: { ...flight, elapsed: flight.travelDuration * 0.5 },
+    });
+    const receiver = shifted.home.players.find((p) => p.id === st.id)!;
+    expect(receiver.position.y).toBeGreaterThan(st.position.y);
+    expect(receiver.position.y).toBeLessThanOrEqual(endY + 0.0001);
+  });
 });

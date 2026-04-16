@@ -1,6 +1,7 @@
 import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { distance } from '@/domain/geometry';
+import { secondLastDefenderY } from '@/domain/lines';
 import type { PassLaneAssessment } from './passLane';
 
 export type Rating = 'open' | 'pressure' | 'risky' | 'loss-danger';
@@ -65,11 +66,13 @@ type Signals = {
   readonly closedStance: boolean;
   readonly laneBlocked: boolean;
   readonly laneThreatened: boolean;
+  readonly offside: boolean;
 };
 
 export type ReasonCode =
   | 'no-holder'
   | 'lane-blocked'
+  | 'offside'
   | 'overload'
   | 'close-contact-dirty'
   | 'sharp-dirty'
@@ -82,6 +85,30 @@ export type ReasonCode =
   | 'one-presser'
   | 'open';
 
+/**
+ * Radius (Welt-Einheiten) um den Ballträger, innerhalb dessen die lokale
+ * Über-/Unterzahl gezählt wird. 20 Einheiten entsprechen grob dem
+ * direkten Spielraum rund um die Ballsituation.
+ */
+export const LOCAL_OVERLOAD_RADIUS = 20;
+
+/**
+ * Schwelle für die Anpassung der Bewertung: ab +3 Spielern lokale Überzahl
+ * wird das Rating eine Stufe besser, ab −3 eine Stufe schlechter.
+ * Die Schwelle ist bewusst konservativ gewählt – in der Aufbau-Szene hat
+ * das Heimteam ohnehin mehrere Spieler rund um den Ball, das darf die
+ * Grundbewertung nicht automatisch verschieben. Erst eine deutliche
+ * Mehrheit (+3) entschärft wirklich.
+ */
+export const LOCAL_OVERLOAD_THRESHOLD = 3;
+
+const RATING_LADDER: readonly Rating[] = [
+  'open',
+  'pressure',
+  'risky',
+  'loss-danger',
+];
+
 export type Evaluation = {
   readonly rating: Rating;
   readonly code: ReasonCode;
@@ -92,6 +119,8 @@ const REASON_TEXT: Record<ReasonCode, string> = {
   'no-holder': 'Kein Ballträger – niemand kann den Ball spielen.',
   'lane-blocked':
     'Gegner fängt die Passlinie ab – der Pass kommt gar nicht erst an.',
+  offside:
+    'Empfänger steht jenseits der letzten Verteidigerlinie – der Pass läuft in die Abseitsfalle.',
   overload:
     'Drei oder mehr Gegner im Presseradius – der Ballträger ist überladen.',
   'close-contact-dirty':
@@ -120,6 +149,7 @@ const REASON_TEXT: Record<ReasonCode, string> = {
  */
 function firstLossDangerCode(s: Signals): ReasonCode | undefined {
   if (s.laneBlocked) return 'lane-blocked';
+  if (s.offside) return 'offside';
   if (s.pressers >= 3) return 'overload';
   if (s.closest <= CLOSE_CONTACT_RADIUS && s.dirty) return 'close-contact-dirty';
   if (s.sharp && s.dirty) return 'sharp-dirty';
@@ -150,6 +180,17 @@ export function explainRating(
   const opp = attackerIsHome ? scene.away : scene.home;
 
   const distances = opp.players.map((p) => distance(p.position, holder.position));
+  // Abseits-Signal nur nach einem gespielten Pass prüfen: bei der reinen
+  // Startaufstellung oder beim Dribbling ist "Empfänger jenseits der Linie"
+  // keine sinnvolle Kategorie.
+  const offsideLine = scene.lastPass
+    ? secondLastDefenderY(opp, attackerIsHome ? 100 : 0)
+    : Number.NaN;
+  const offside =
+    Number.isFinite(offsideLine) &&
+    (attackerIsHome
+      ? holder.position.y > offsideLine
+      : holder.position.y < offsideLine);
   const signals: Signals = {
     pressers: distances.filter((d) => d <= PRESSURE_RADIUS).length,
     closest: distances.reduce((min, d) => (d < min ? d : min), Infinity),
@@ -161,8 +202,14 @@ export function explainRating(
     closedStance: scene.lastReception?.stance === 'closed',
     laneBlocked: (passLane?.blockers ?? 0) >= 1,
     laneThreatened: (passLane?.threats ?? 0) >= 1,
+    offside,
   };
 
+  const base = baseEvaluation(signals);
+  return applyLocalOverload(base, scene, holder, opp, attackerIsHome);
+}
+
+function baseEvaluation(signals: Signals): Evaluation {
   const lossCode = firstLossDangerCode(signals);
   if (lossCode) {
     return {
@@ -200,6 +247,75 @@ export function explainRating(
   }
 
   return { rating: 'open', code: 'open', reason: REASON_TEXT.open };
+}
+
+/**
+ * Harte Regelverstöße, bei denen lokale Über-/Unterzahl keine Rolle spielt:
+ * Abfang, Abseits und fehlender Ballträger entscheiden unabhängig vom
+ * Zahlenverhältnis um den Ball.
+ */
+const OVERLOAD_EXEMPT_CODES: ReadonlySet<ReasonCode> = new Set([
+  'lane-blocked',
+  'offside',
+  'no-holder',
+]);
+
+/**
+ * Passt das Rating um ±1 Stufe an, wenn rund um den Ballträger deutliche
+ * lokale Über- oder Unterzahl besteht. Harte Verstöße bleiben unberührt
+ * (siehe `OVERLOAD_EXEMPT_CODES`).
+ */
+function applyLocalOverload(
+  base: Evaluation,
+  scene: Scene,
+  holder: ReturnType<typeof findPlayer> & object,
+  opp: Scene['home'],
+  attackerIsHome: boolean,
+): Evaluation {
+  if (OVERLOAD_EXEMPT_CODES.has(base.code)) return base;
+
+  const own = attackerIsHome ? scene.home : scene.away;
+  const ownNear = own.players.filter(
+    (p) =>
+      p.id !== holder.id &&
+      p.role !== 'GK' &&
+      distance(p.position, holder.position) <= LOCAL_OVERLOAD_RADIUS,
+  ).length;
+  const oppNear = opp.players.filter(
+    (p) =>
+      p.role !== 'GK' &&
+      distance(p.position, holder.position) <= LOCAL_OVERLOAD_RADIUS,
+  ).length;
+  const overload = ownNear - oppNear;
+
+  if (overload >= LOCAL_OVERLOAD_THRESHOLD) {
+    const better = shiftRating(base.rating, -1);
+    if (better === base.rating) return base;
+    return {
+      rating: better,
+      code: base.code,
+      reason: `${base.reason} Örtliche Überzahl (+${overload}) entschärft die Lage.`,
+    };
+  }
+  if (overload <= -LOCAL_OVERLOAD_THRESHOLD) {
+    const worse = shiftRating(base.rating, 1);
+    if (worse === base.rating) return base;
+    return {
+      rating: worse,
+      code: base.code,
+      reason: `${base.reason} Örtliche Unterzahl (${overload}) verschärft die Lage.`,
+    };
+  }
+  return base;
+}
+
+function shiftRating(rating: Rating, delta: number): Rating {
+  const idx = RATING_LADDER.indexOf(rating);
+  if (idx < 0) return rating;
+  const next = idx + delta;
+  if (next < 0) return RATING_LADDER[0]!;
+  if (next >= RATING_LADDER.length) return RATING_LADDER[RATING_LADDER.length - 1]!;
+  return RATING_LADDER[next]!;
 }
 
 export function evaluate(scene: Scene, passLane?: PassLaneAssessment): Rating {

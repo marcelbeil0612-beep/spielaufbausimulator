@@ -37,3 +37,22 @@ export function getLines(team: Team): TeamLines {
     attack: avgY(team, ATTACK_ROLES),
   };
 }
+
+/**
+ * Abseits-Linie: y-Position des zweit-hintersten Feldspielers des Teams
+ * (Torwart ausgeschlossen) gemessen aus Richtung der eigenen Torlinie
+ * `ownGoalY` (0 oder 100). Vereinfachte "2nd-to-last"-Regel für das
+ * didaktische Modell.
+ *
+ * `NaN` falls weniger als zwei Feldspieler vorhanden sind.
+ */
+export function secondLastDefenderY(team: Team, ownGoalY: number): number {
+  const fieldYs = team.players
+    .filter((p) => p.role !== 'GK')
+    .map((p) => p.position.y);
+  if (fieldYs.length < 2) return Number.NaN;
+  const sorted = [...fieldYs].sort((a, b) =>
+    ownGoalY === 100 ? b - a : a - b,
+  );
+  return sorted[1]!;
+}

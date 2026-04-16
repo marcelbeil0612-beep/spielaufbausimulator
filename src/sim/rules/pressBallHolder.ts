@@ -3,6 +3,7 @@ import type { Scene } from '@/domain/scene';
 import { findPlayer } from '@/domain/scene';
 import { distance, pressPosition } from '@/domain/geometry';
 import { maxShiftDistance } from '@/domain/physics';
+import { anticipatedBallPos } from '@/domain/ballFlight';
 import type { ReactOptions } from '../reactTo';
 import { PRESS_INTENSITY_FACTORS } from './pressIntensity';
 import { formationContextFor } from './formationContext';
@@ -31,9 +32,14 @@ export function pressBallHolder(scene: Scene, options?: ReactOptions): Scene {
 
   const factor = PRESS_INTENSITY_FACTORS[scene.pressIntensity].press;
   const targetDistance = PRESS_DISTANCE * factor;
+  // Während des Ballflugs antizipiert der Presser: statt auf den
+  // Empfänger-Baseline zu laufen, steuert er den vorweggenommenen
+  // Treffpunkt an. Entscheidend für Lead-Pässe, bei denen
+  // `holder.position` ≠ `flight.end` ist.
+  const pressTarget = anticipatedBallPos(scene.ballFlight, holder.position);
   const target = pressPosition(
     nearest.position,
-    holder.position,
+    pressTarget,
     targetDistance,
   );
   const newPos = capMoveTo(nearest, target, options);

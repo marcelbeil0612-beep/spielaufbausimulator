@@ -271,4 +271,111 @@ describe('explainRating', () => {
     const scene = createInitialScene();
     expect(evaluate(scene)).toBe(explainRating(scene).rating);
   });
+
+  it('Abseits: Empfänger jenseits der letzten Verteidigerlinie → loss-danger', () => {
+    const scene = createInitialScene();
+    const st = scene.home.players.find((p) => p.role === 'ST')!;
+    // ST weit über die Abwehrlinie hinausschieben und als Ballträger setzen.
+    const offsideScene: Scene = {
+      ...scene,
+      ballHolderId: st.id,
+      home: {
+        ...scene.home,
+        players: scene.home.players.map((p) =>
+          p.id === st.id ? { ...p, position: { x: 50, y: 95 } } : p,
+        ),
+      },
+      lastPass: { velocity: 'normal', accuracy: 'neutral' },
+      lastReception: { firstTouch: 'neutral', stance: 'open' },
+    };
+    const r = explainRating(offsideScene);
+    expect(r.rating).toBe('loss-danger');
+    expect(r.code).toBe('offside');
+  });
+
+  it('Lokale Überzahl entschärft das Rating um eine Stufe', () => {
+    const scene = createInitialScene();
+    const holder = scene.home.players.find((p) => p.id === scene.ballHolderId)!;
+    // Einen Gegner künstlich in den Pressing-Radius + drei eigene Spieler
+    // in unmittelbare Nähe zum Ballträger. ownNear − oppNear ≥ 3.
+    const s: Scene = {
+      ...scene,
+      home: {
+        ...scene.home,
+        players: scene.home.players.map((p, i) => {
+          if (p.id === holder.id || p.role === 'GK') return p;
+          if (i < 4)
+            return { ...p, position: { x: holder.position.x, y: holder.position.y + 1 } };
+          return p;
+        }),
+      },
+      away: {
+        ...scene.away,
+        players: scene.away.players.map((p, i) =>
+          i === 0
+            ? { ...p, position: { x: holder.position.x + 6, y: holder.position.y } }
+            : { ...p, position: { x: 50, y: 80 } },
+        ),
+      },
+    };
+    const r = explainRating(s);
+    // Ohne Überzahl wäre das Rating 'pressure' (1 Gegner im Radius).
+    // Mit +3 Überzahl wird eine Stufe runter → 'open'.
+    expect(r.rating).toBe('open');
+    expect(r.reason).toMatch(/Überzahl/);
+  });
+
+  it('Lokale Unterzahl verschärft das Rating um eine Stufe', () => {
+    const scene = createInitialScene();
+    const holder = scene.home.players.find((p) => p.id === scene.ballHolderId)!;
+    // Eigene Spieler weit weg, drei Feldspieler-Gegner rund um den
+    // Ballträger: zwei im PRESSURE_RADIUS=12 (Basis 'risky'), ein dritter
+    // im LOCAL_OVERLOAD_RADIUS=20 (sorgt für ownNear−oppNear=−3 ⇒
+    // loss-danger). i=0 ist in 4-4-2 der gegnerische TW und wird im
+    // Overload-Zähler ausgeschlossen, daher nach hinten gesetzt.
+    const s: Scene = {
+      ...scene,
+      home: {
+        ...scene.home,
+        players: scene.home.players.map((p) =>
+          p.id === holder.id || p.role === 'GK'
+            ? p
+            : { ...p, position: { x: 95, y: 95 } },
+        ),
+      },
+      away: {
+        ...scene.away,
+        players: scene.away.players.map((p, i) =>
+          i === 1
+            ? { ...p, position: { x: holder.position.x + 6, y: holder.position.y + 3 } }
+            : i === 2
+              ? { ...p, position: { x: holder.position.x - 6, y: holder.position.y + 4 } }
+              : i === 3
+                ? { ...p, position: { x: holder.position.x + 14, y: holder.position.y + 5 } }
+                : { ...p, position: { x: 50, y: 80 } },
+        ),
+      },
+    };
+    const r = explainRating(s);
+    expect(r.rating).toBe('loss-danger');
+    expect(r.reason).toMatch(/Unterzahl/);
+  });
+
+  it('Abseits-Signal feuert nicht ohne gespielten Pass (Startszene)', () => {
+    const scene = createInitialScene();
+    // ST jenseits der Linie, aber kein lastPass gesetzt → kein Abseits-Flag.
+    const st = scene.home.players.find((p) => p.role === 'ST')!;
+    const staged: Scene = {
+      ...scene,
+      ballHolderId: st.id,
+      home: {
+        ...scene.home,
+        players: scene.home.players.map((p) =>
+          p.id === st.id ? { ...p, position: { x: 50, y: 95 } } : p,
+        ),
+      },
+    };
+    const r = explainRating(staged);
+    expect(r.code).not.toBe('offside');
+  });
 });

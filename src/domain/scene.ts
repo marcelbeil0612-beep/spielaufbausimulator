@@ -1,6 +1,8 @@
 import type { PitchCoord, Player, Team } from './types';
 import type { PassOptions } from './pass';
 import { DEFAULT_PASS_OPTIONS } from './pass';
+import type { LeadPreset } from './leadPass';
+import { DEFAULT_LEAD_PRESET } from './leadPass';
 import type { FirstTouch, Reception, Stance } from './reception';
 import { DEFAULT_RECEPTION } from './reception';
 import type { StartVariant } from './startVariants';
@@ -41,6 +43,7 @@ export type Scene = {
   readonly firstTouchPlan: FirstTouch;
   readonly stancePlan: Stance;
   readonly passPlan: PassOptions;
+  readonly leadPlan: LeadPreset;
   readonly pressIntensity: PressIntensity;
   readonly lastPass: PassOptions | null;
   readonly lastReception: Reception | null;
@@ -69,6 +72,7 @@ export function snapshotScene(scene: Scene): SceneSnapshot {
     firstTouchPlan: scene.firstTouchPlan,
     stancePlan: scene.stancePlan,
     passPlan: scene.passPlan,
+    leadPlan: scene.leadPlan,
     pressIntensity: scene.pressIntensity,
     lastPass: scene.lastPass,
     lastReception: scene.lastReception,
@@ -98,6 +102,7 @@ export function createInitialScene(
   stancePlan: Stance = DEFAULT_RECEPTION.stance,
   pressIntensity: PressIntensity = DEFAULT_PRESS_INTENSITY,
   awayFormation: FormationPattern = DEFAULT_AWAY_FORMATION,
+  leadPlan: LeadPreset = DEFAULT_LEAD_PRESET,
 ): Scene {
   const rawHome = teamFromFormation(FORMATION_4_3_3, 'home');
   const home = applyStartVariant(rawHome, variant);
@@ -118,6 +123,7 @@ export function createInitialScene(
     firstTouchPlan,
     stancePlan,
     passPlan,
+    leadPlan,
     pressIntensity,
     lastPass: null,
     lastReception: null,

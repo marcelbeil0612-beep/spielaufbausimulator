@@ -22,6 +22,13 @@ export {
 } from './pass';
 export type { PassAccuracy, PassOptions, PassVelocity } from './pass';
 export {
+  DEFAULT_LEAD_PRESET,
+  LEAD_PRESETS,
+  LEAD_PRESET_LABELS,
+  leadOffsetFor,
+} from './leadPass';
+export type { LeadPreset } from './leadPass';
+export {
   DEFAULT_RECEPTION,
   FIRST_TOUCHES,
   FIRST_TOUCH_LABELS,
